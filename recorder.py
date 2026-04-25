@@ -12,6 +12,7 @@ Recordings saved to /home/pi/recordings/:
 """
 
 import lgpio
+import signal
 import subprocess
 import threading
 import time
@@ -43,38 +44,7 @@ def gst_record_cmd(path):
     )
 
 
-def capture_still(path):
-    """
-    Stream MJPEG from GStreamer into a pipe and extract the first complete JPEG frame.
-    Avoids relying on gst-launch or ffmpeg exiting cleanly after one frame,
-    which both hang on this device.
-    """
-    proc = subprocess.Popen(
-        f"gst-launch-1.0 -q v4l2src device={VIDEO_DEV} ! '{GST_CAPS}' ! "
-        f"v4l2jpegenc ! fdsink fd=1",
-        shell=True, stdout=subprocess.PIPE,
-    )
-    try:
-        buf = b''
-        soi = None
-        while True:
-            chunk = proc.stdout.read(4096)
-            if not chunk:
-                break
-            buf += chunk
-            if soi is None:
-                idx = buf.find(b'\xff\xd8')
-                if idx != -1:
-                    buf = buf[idx:]   # trim to start of JPEG
-                    soi = 0
-            if soi is not None:
-                eoi = buf.find(b'\xff\xd9', 2)
-                if eoi != -1:
-                    Path(path).write_bytes(buf[:eoi + 2])
-                    return
-    finally:
-        proc.terminate()
-        proc.wait()
+STILL_DURATION_S = 1.0   # how long to record before extracting the still frame
 
 
 class Recorder:
@@ -154,9 +124,20 @@ class Recorder:
     def _capture_still(self):
         self._led(True)                              # immediate: button registered
         print("Still: capturing...", flush=True)
-        path = RECORDINGS_DIR / f"still_{self._timestamp()}.jpg"
-        capture_still(path)
-        print(f"Still saved: {path}", flush=True)
+        ts = self._timestamp()
+        avi  = RECORDINGS_DIR / f"still_{ts}.avi"
+        jpg  = RECORDINGS_DIR / f"still_{ts}.jpg"
+
+        # Record a short clip using the normal pipeline, then extract one frame.
+        # gst-launch-1.0 -e exits cleanly on SIGINT, flushing the AVI properly.
+        proc = subprocess.Popen(gst_record_cmd(avi), shell=True)
+        time.sleep(STILL_DURATION_S)
+        proc.send_signal(signal.SIGINT)
+        proc.wait()
+
+        subprocess.run(f"ffmpeg -i {avi} -frames:v 1 -y {jpg}",
+                       shell=True, capture_output=True)
+        print(f"Still saved: {jpg}", flush=True)
         self._flash_still()                          # confirm: double-blink
 
     # ------------------------------------------------------------------
