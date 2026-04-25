@@ -1,0 +1,19 @@
+[Unit]
+Description=Analog video recorder (DVX-Nebula)
+# Wait for V4L2 device and I2C to be ready
+After=dev-video0.device
+Requires=dev-video0.device
+
+[Service]
+Type=simple
+User=pi
+# Configure the ADV7280 chip before starting the recorder
+ExecStartPre=/usr/bin/python3 /home/pi/setup-adv.py
+ExecStart=/usr/bin/python3 /home/pi/recorder.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

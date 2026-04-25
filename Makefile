@@ -5,7 +5,7 @@ ssh:
 	sshpass -p "raspberry" ssh pi@camera.local
 
 upload:
-	sshpass -p "raspberry" scp capture.sh setup-adv.py setup-pi.sh install_patch.sh pi@camera.local:/home/pi/
+	sshpass -p "raspberry" scp capture.sh setup-adv.py setup-pi.sh install_patch.sh recorder.py recorder.service pi@camera.local:/home/pi/
 
 setup: upload
 	sshpass -p "raspberry" ssh pi@camera.local "bash /home/pi/setup-pi.sh"

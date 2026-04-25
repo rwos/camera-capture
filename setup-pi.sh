@@ -3,8 +3,8 @@
 # and configures the ADV7280 chip. Safe to re-run.
 set -e
 
-echo "=== Installing GStreamer tools ==="
-sudo apt-get install -y gstreamer1.0-tools
+echo "=== Installing packages ==="
+sudo apt-get install -y gstreamer1.0-tools python3-lgpio
 
 echo "=== Setting CPU governor to performance mode (persistent across reboots) ==="
 sudo tee /etc/systemd/system/cpu-performance.service > /dev/null << 'EOF'
@@ -23,6 +23,11 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now cpu-performance
 echo "CPU governor: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
+
+echo "=== Installing recorder service ==="
+sudo cp /home/pi/recorder.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now recorder
 
 echo "=== Configuring ADV7280 chip ==="
 python3 /home/pi/setup-adv.py
