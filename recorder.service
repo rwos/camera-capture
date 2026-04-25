@@ -6,9 +6,13 @@ After=multi-user.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi
+# CAP_DAC_OVERRIDE lets the pi user write to /sys/class/leds/ACT/trigger
+AmbientCapabilities=CAP_DAC_OVERRIDE
+CapabilityBoundingSet=CAP_DAC_OVERRIDE
 # Configure the ADV7280 chip before starting the recorder
 ExecStartPre=/usr/bin/python3 /home/pi/setup-adv.py
 ExecStart=/usr/bin/python3 /home/pi/recorder.py
+TimeoutStartSec=30
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

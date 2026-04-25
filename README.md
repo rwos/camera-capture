@@ -11,7 +11,7 @@ Available from [Ethermata on Tindie](https://www.tindie.com/products/ethermata/a
 
 - Raspberry Pi Zero 2W
 - DVX-Nebula ADV7280 uHAT ([Hackaday.io](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield))
-- SD card (Class 10 / A1 recommended — captures run ~1.1 MB/s)
+- SD card (Class 10 / A1 recommended -- captures run ~1.1 MB/s)
 - Analog video source (composite CVBS or S-Video)
 
 The hat connects via the 40-pin GPIO header and routes video through the CSI ribbon connector.
@@ -21,17 +21,17 @@ The hat connects via the 40-pin GPIO header and routes video through the CSI rib
 ## How it works
 
 ```
-Analog video → ADV7280 decoder (I2C config) → CSI → /dev/video0 (V4L2, UYVY422) → GStreamer → MJPEG AVI
+Analog video -> ADV7280 decoder (I2C config) -> CSI -> /dev/video0 (V4L2, UYVY422) -> GStreamer -> MJPEG AVI
 ```
 
 The ADV7280 converts analog video to a digital UYVY stream over MIPI CSI-2. A patched
 `adv7180` kernel module tells the driver the correct frame dimensions. GStreamer captures
 from V4L2 and encodes using the Pi's hardware JPEG encoder (`v4l2jpegenc`), which accepts
-UYVY directly — no CPU-side colour conversion needed. This is the only pipeline that
+UYVY directly -- no CPU-side colour conversion needed. This is the only pipeline that
 achieves full 25 fps (PAL) on the Pi Zero 2W.
 
 Captures are saved as MJPEG AVI (~1.1 MB/s). Transcode to H264 MP4 on a faster machine
-(Mac/PC) with `make transcode` — Apple Silicon handles this in well under real-time.
+(Mac/PC) with `make transcode` -- Apple Silicon handles this in well under real-time.
 
 ---
 
@@ -50,7 +50,8 @@ And in `capture.sh`, the GStreamer caps line:
 ```bash
 "video/x-raw,format=UYVY,width=720,height=576,framerate=25/1"
 #                                        ^^^         ^^
-#                         PAL=576, NTSC=507          PAL=25, NTSC=30 (29.97)
+#                         PAL=576, NTSC=507*         PAL=25, NTSC=30 (29.97)
+# * NTSC=507 requires the patched adv7180 kernel module (install_patch.sh)
 ```
 
 Input type (composite vs S-Video) is set by the device tree overlay and matches the
@@ -83,7 +84,7 @@ sudo bash -c 'echo "gpu_mem=128" >> /boot/firmware/config.txt'
 
 ### 3. Upload scripts to the Pi
 
-From your Mac/PC (requires `sshpass` — `brew install sshpass`):
+From your Mac/PC (requires `sshpass` -- `brew install sshpass`; `make stream` also requires `ffplay` -- `brew install ffmpeg`):
 
 ```bash
 make upload
@@ -96,11 +97,11 @@ enabled. `install_patch.sh` (included in this repo) builds and installs a correc
 version matched to your running kernel:
 
 ```bash
-# On the Pi:
+# SSH into the Pi first (make ssh), then:
 sudo bash install_patch.sh
 ```
 
-This takes several minutes — it downloads the kernel source and compiles the module.
+This takes several minutes -- it downloads the kernel source and compiles the module.
 
 ### 5. Reboot
 
@@ -122,8 +123,9 @@ This uploads scripts to the Pi, installs GStreamer, sets the CPU governor to
 ## Per-boot setup
 
 `setup-adv.py` must run after every boot to configure the ADV7280 chip (the kernel
-driver does not apply all required settings at probe time). `make setup` handles this,
-or you can run it directly on the Pi:
+driver does not apply all required settings at probe time). The `recorder.service`
+installed by `make setup` runs it automatically on boot via `ExecStartPre`. To run
+it manually:
 
 ```bash
 python3 setup-adv.py
@@ -136,12 +138,12 @@ python3 setup-adv.py
 ```bash
 # On the Pi (via SSH):
 bash capture.sh my-clip
-# → saves /home/pi/my-clip.avi
+# -> saves /home/pi/my-clip.avi
 
 # On Mac/PC: download and transcode
 make down FILE=my-clip
 make transcode FILE=my-clip
-# → my-clip.mp4 (H264)
+# -> my-clip.mp4 (H264)
 ```
 
 ---
@@ -170,14 +172,14 @@ Default Pi address is `camera.local`; edit the Makefile if yours differs.
 | `make setup` | Upload + install packages + configure ADV7280 |
 | `make stream` | Live MJPEG preview via ffplay |
 | `make down [FILE=name]` | Download `name.avi` from Pi (default: `capture`) |
-| `make transcode [FILE=name]` | Convert `name.avi` → `name.mp4` (H264) on Mac |
+| `make transcode [FILE=name]` | Convert `name.avi` -> `name.mp4` (H264) on Mac |
 
 ---
 
 ## Troubleshooting
 
 **No signal / black screen**
-- Run `python3 setup-adv.py` — it prints signal lock status. Look for `LOCKED`.
+- Run `python3 setup-adv.py` -- it prints signal lock status. Look for `LOCKED`.
 - Check that `STANDARD` in `setup-adv.py` matches your camera (PAL vs NTSC).
 - Verify the dtoverlay line is in `/boot/firmware/config.txt` and the Pi has rebooted since.
 

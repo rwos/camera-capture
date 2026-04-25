@@ -18,7 +18,7 @@ make upload                 # Deploy scripts to /home/pi/
 make setup                  # Full Pi setup: install packages, CPU governor, configure ADV7280
 make stream                 # Live MJPEG preview via ffplay (low latency, for debugging)
 make down [FILE=basename]   # Download captured AVI from Pi (default: capture.avi)
-make transcode [FILE=basename]  # Convert AVI → H264 MP4 on Mac (default: capture)
+make transcode [FILE=basename]  # Convert AVI -> H264 MP4 on Mac (default: capture)
 ```
 
 Capture workflow:
@@ -32,44 +32,44 @@ Capture workflow:
 ### Video Pipeline
 
 ```
-Analog video → ADV7280 (I2C config) → CSI → /dev/video0 (V4L2, UYVY422) → GStreamer
+Analog video -> ADV7280 (I2C config) -> CSI -> /dev/video0 (V4L2, UYVY422) -> GStreamer
 ```
 
 The camera is PAL composite. The ADV7280 with I2P deinterlacing outputs:
 - Format: UYVY 4:2:2 (packed)
-- Resolution: 720×576 @ 25fps
+- Resolution: 720x576 @ 25fps
 
 ### Why GStreamer + MJPEG (not FFmpeg + H264)
 
 The Pi Zero 2W cannot encode H264 in real-time from this source. The bottleneck is
-software color space conversion: UYVY422 → YUV420p (required by `h264_v4l2m2m`) maxes
+software color space conversion: UYVY422 -> YUV420p (required by `h264_v4l2m2m`) maxes
 out at ~23fps on a 1GHz Cortex-A53, below the 25fps input rate.
 
 The hardware JPEG encoder (`v4l2jpegenc`) accepts UYVY directly, bypassing the color
 conversion entirely, and runs at ~45fps (well above real-time).
 
-CPU governor is set to `performance` (1GHz) persistently via systemd — this is handled
+CPU governor is set to `performance` (1GHz) persistently via systemd -- this is handled
 by `setup-pi.sh` / `make setup`.
 
 ### Scripts
 
-1. `setup-adv.py` — Configures the ADV7280 chip over I2C (`/dev/i2c-10`, address `0x21`).
+1. `setup-adv.py` -- Configures the ADV7280 chip over I2C (`/dev/i2c-10`, address `0x21`).
    Sets input to composite (COMP), PAL mode, enables I2P de-interlacing, enables AGC.
    Must be run after each Pi boot.
 
-2. `capture.sh` — Runs on the Pi. Records UYVY video using GStreamer + hardware JPEG encoder
+2. `capture.sh` -- Runs on the Pi. Records UYVY video using GStreamer + hardware JPEG encoder
    (`v4l2jpegenc`) to an MJPEG AVI file. No color conversion, no frame drops. Usage:
-   `bash capture.sh <basename>` → saves `/home/pi/<basename>.avi`.
+   `bash capture.sh <basename>` -> saves `/home/pi/<basename>.avi`.
 
-3. `setup-pi.sh` — One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
+3. `setup-pi.sh` -- One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
    a systemd service for persistent CPU performance mode, then runs `setup-adv.py`.
 
 ### Key Video Dimensions
 
-- V4L2 output: `720×576` @ 25fps, UYVY422 (driver ignores any other size request)
+- V4L2 output: `720x576` @ 25fps, UYVY422 (driver ignores any other size request)
 - Configured mode: PAL, progressive (I2P deinterlace ON in ADV7280)
-- Blanking: PAL active picture is full 720×576; vertical framing may have a ~20-row offset
-  (bottom rows appearing at top) — this is a known ADV7280 config issue, not yet resolved
+- Blanking: PAL active picture is full 720x576; vertical framing may have a ~20-row offset
+  (bottom rows appearing at top) -- this is a known ADV7280 config issue, not yet resolved
 
 ### Mac-side Transcode
 
@@ -82,7 +82,7 @@ H264 ~0.5MB/s depending on scene complexity.
 
 ### Kernel Module
 
-`install_patch.sh` — Run once on the Pi as root. Builds and installs a patched `adv7180.ko`
+`install_patch.sh` -- Run once on the Pi as root. Builds and installs a patched `adv7180.ko`
 kernel module from source, matched to the running firmware version. The patch extends
 captured height to include blanking lines.
 

@@ -43,7 +43,7 @@ import struct
 import time
 
 # ---------------------------------------------------------------------------
-# Configuration — adjust for your source signal / preferences
+# Configuration -- adjust for your source signal / preferences
 # ---------------------------------------------------------------------------
 
 # Signal standard. Sets the decoder mode AND tells the kernel the correct
@@ -61,8 +61,8 @@ ENABLE_I2P = True
 # Too dark without it on composite sources. Disable if overexposed.
 ENABLE_AGC = True
 
-# Luma (contrast) gain, reg 0x08. Range 0x00–0xFF; 0x80 = 1.0×, 0xFF = 2.0×.
-# Composite CVBS signals typically need 2× to reach proper luma levels.
+# Luma (contrast) gain, reg 0x08. Range 0x00-0xFF; 0x80 = 1.0x, 0xFF = 2.0x.
+# Composite CVBS signals typically need 2x to reach proper luma levels.
 # If the image is too bright, reduce toward 0x80. If AGC is disabled, this
 # is the primary brightness control.
 CONTRAST_GAIN = 0xFF
@@ -87,9 +87,9 @@ CONTRAST_GAIN = 0xFF
 # CHROMA FILTER / GAIN (reg 0x17, 0x2D, 0x2E): effect unclear from testing.
 #   Kernel already sets reg 0x17 = 0x41 (ADI-recommended SH1 filter for CVBS).
 #
-# BT.656-4 FLAG (reg 0x04 bit 7, 0x57→0xD7): would change NTSC output to
+# BT.656-4 FLAG (reg 0x04 bit 7, 0x57->0xD7): would change NTSC output to
 #   487 lines (vs 507) when I2P is disabled. With I2P enabled, has no effect
-#   (per FPGA testing in sdtv2csi issue #1). Kernel writes 0x57 — leave as is.
+#   (per FPGA testing in sdtv2csi issue #1). Kernel writes 0x57 -- leave as is.
 # ---------------------------------------------------------------------------
 
 MAIN    = 0x21
@@ -110,7 +110,7 @@ _VIDIOC_S_STD = (1 << 30) | (8 << 16) | (ord('V') << 8) | 24   # = 0x40085618
 # ---- I2C via I2C_RDWR ioctl -----------------------------------------------
 # smbus uses I2C_SLAVE ioctl, which fails (EBUSY) when a kernel driver owns the
 # device. I2C_RDWR works regardless. ADV7280-M also requires a repeated-start
-# for register reads (write reg addr, read byte, no STOP in between) — this is
+# for register reads (write reg addr, read byte, no STOP in between) -- this is
 # only possible via I2C_RDWR, not via separate write+read transactions.
 
 I2C_RDWR = 0x0707
@@ -205,8 +205,8 @@ def read_state(i2c):
     csi_01 = i2c.read(CSI,  0x01)   # CSI timing[1]: 0x20 = progressive, 0x18 = interlaced
 
     # On ADV7280, STATUS1 has two lock bits:
-    #   bit 1 = IN_LOCK  (sync lock — primary signal lock indicator)
-    #   bit 0 = FSC_LOCK (color subcarrier lock — secondary, may lag by seconds)
+    #   bit 1 = IN_LOCK  (sync lock -- primary signal lock indicator)
+    #   bit 0 = FSC_LOCK (color subcarrier lock -- secondary, may lag by seconds)
     # The kernel uses ADV7180_STATUS1_IN_LOCK = 0x01 (bit 0 = FSC_LOCK on ADV7280),
     # which causes V4L2 to report "no signal" even when sync is locked.
     in_lock  = bool(s1 & 0x02)   # bit 1: sync lock
@@ -222,8 +222,8 @@ def read_state(i2c):
 
     lock_str = "LOCKED" if in_lock else "UNLOCKED"
     fsc_str  = ", color locked" if fsc_lock else ", color not yet locked"
-    ck_str   = "  *** COL_KILL active (no color burst — camera paused/monochrome?)" if col_kill else ""
-    res_warn = "" if res_bit else "  *** reserved bit missing — reboot to re-init"
+    ck_str   = "  *** COL_KILL active (no color burst -- camera paused/monochrome?)" if col_kill else ""
+    res_warn = "" if res_bit else "  *** reserved bit missing -- reboot to re-init"
 
     print(f"  Ident:        0x{ident:02X}")
     print(f"  Signal:       {lock_str}{fsc_str} | {_AUTOD.get(autod, f'unknown 0x{autod:02X}')}{ck_str}")
@@ -231,7 +231,7 @@ def read_state(i2c):
     print(f"  Std (0x02):   0x{vidsel:02X}  {_VIDSEL.get(std_mode, f'mode {std_mode}')}{res_warn}")
     print(f"  Autoen (0x07):0x{autoen:02X}  (0x7F = all standards enabled)")
     print(f"  AGC (0x2C):   0x{agc:02X}  ({'enabled' if agc == 0xAE else 'disabled' if agc == 0x8C else 'custom'})")
-    print(f"  Contrast(08): 0x{contrast:02X}  ({contrast/128:.2f}×)")
+    print(f"  Contrast(08): 0x{contrast:02X}  ({contrast/128:.2f}x)")
     print(f"  I2P:          {'ON' if i2p_on else 'OFF'}   "
           f"(VPP 0x55=0x{vpp_55:02X} 0x5B=0x{vpp_5b:02X} 0xA3=0x{vpp_a3:02X})")
     print(f"  CSI[0x01]:    0x{csi_01:02X}  "
@@ -245,22 +245,22 @@ def configure_standard(i2c, standard):
     Set the video standard in both the chip and the kernel.
 
     The kernel hardcodes curr_norm = V4L2_STD_NTSC at probe, causing two problems:
-      1. adv7182_set_std writes 0x54 (forced NTSC-M) to reg 0x02 → PAL won't lock
+      1. adv7182_set_std writes 0x54 (forced NTSC-M) to reg 0x02 -> PAL won't lock
       2. adv7180_mbus_fmt reports height 480/507 (NTSC) regardless of actual signal
 
-    We fix this with VIDIOC_S_STD, which calls adv7180_s_std → adv7180_program_std
-    → adv7182_set_std. This writes the correct decoder mode to reg 0x02 AND updates
+    We fix this with VIDIOC_S_STD, which calls adv7180_s_std -> adv7180_program_std
+    -> adv7182_set_std. This writes the correct decoder mode to reg 0x02 AND updates
     state->curr_norm so the kernel reports the correct frame height.
 
     For AUTO mode, we write reg 0x02 directly to enable autodetect. The kernel's
-    curr_norm stays NTSC — capture tools will need explicit dimensions in this case.
+    curr_norm stays NTSC -- capture tools will need explicit dimensions in this case.
 
     reg 0x07 = 0x7F: enable all autodetect standards (chip power-on default;
     explicit here to guard against a previous session disabling it).
     """
     if standard == "AUTO":
         # Autodetect: chip determines standard from signal.
-        # Kernel height stays wrong (NTSC default) — specify dimensions explicitly
+        # Kernel height stays wrong (NTSC default) -- specify dimensions explicitly
         # in capture tools: 720x507 for NTSC, 720x576 for PAL.
         i2c.write(MAIN, 0x02, 0x04)   # autodetect + reserved bit
         i2c.write(MAIN, 0x07, 0x7F)
@@ -275,7 +275,7 @@ def configure_standard(i2c, standard):
         finally:
             os.close(fd)
     except OSError as e:
-        print(f"  Warning: VIDIOC_S_STD failed ({e}) — falling back to chip autodetect")
+        print(f"  Warning: VIDIOC_S_STD failed ({e}) -- falling back to chip autodetect")
         i2c.write(MAIN, 0x02, 0x04)
     # Ensure all autodetect standard types are enabled (for STATUS1 display)
     i2c.write(MAIN, 0x07, 0x7F)
@@ -292,7 +292,7 @@ def enable_i2p(i2c):
     VPP sub-map writes:
       0x41 = 0x01: reset I2P core before reconfiguring
       0xA3 = 0x00: aux control (normal mode)
-      0x5B = 0x00: no bypass — deinterlacer is active in the signal path
+      0x5B = 0x00: no bypass -- deinterlacer is active in the signal path
       0x55 = 0x80: enable I2P core
 
     CSI sub-map writes: progressive MIPI timing values from kernel source
@@ -333,8 +333,8 @@ def disable_i2p(i2c):
 
 def set_contrast(i2c, gain):
     """
-    Luma contrast gain (reg 0x08). 0x80 = 1.0× (chip default), 0xFF = 2.0×.
-    Composite CVBS from consumer camcorders typically needs 2× for proper luma.
+    Luma contrast gain (reg 0x08). 0x80 = 1.0x (chip default), 0xFF = 2.0x.
+    Composite CVBS from consumer camcorders typically needs 2x for proper luma.
     """
     i2c.write(MAIN, 0x08, gain)
 
@@ -351,32 +351,32 @@ def set_agc(i2c, enabled):
 
 if __name__ == "__main__":
     i2c = I2C(I2C_BUS)
+    try:
+        print("=== ADV7280-M state (before) ===")
+        read_state(i2c)
 
-    print("=== ADV7280-M state (before) ===")
-    read_state(i2c)
+        print("\n=== Applying settings ===")
 
-    print("\n=== Applying settings ===")
+        configure_standard(i2c, STANDARD)
+        print(f"  Standard: {STANDARD} (reg 0x02 via VIDIOC_S_STD, 0x07=0x7F)")
 
-    configure_standard(i2c, STANDARD)
-    print(f"  Standard: {STANDARD} (reg 0x02 via VIDIOC_S_STD, 0x07=0x7F)")
+        if ENABLE_I2P:
+            enable_i2p(i2c)
+            print("  I2P: enabled (progressive output)")
+        else:
+            disable_i2p(i2c)
+            print("  I2P: disabled (interlaced output)")
 
-    if ENABLE_I2P:
-        enable_i2p(i2c)
-        print("  I2P: enabled (progressive output)")
-    else:
-        disable_i2p(i2c)
-        print("  I2P: disabled (interlaced output)")
+        set_contrast(i2c, CONTRAST_GAIN)
+        print(f"  Contrast gain: 0x{CONTRAST_GAIN:02X} ({CONTRAST_GAIN/128:.2f}x)")
 
-    set_contrast(i2c, CONTRAST_GAIN)
-    print(f"  Contrast gain: 0x{CONTRAST_GAIN:02X} ({CONTRAST_GAIN/128:.2f}×)")
+        set_agc(i2c, ENABLE_AGC)
+        print(f"  AGC: {'enabled' if ENABLE_AGC else 'disabled'}")
 
-    set_agc(i2c, ENABLE_AGC)
-    print(f"  AGC: {'enabled' if ENABLE_AGC else 'disabled'}")
+        # Allow chip time to lock after standard change
+        time.sleep(0.5)
 
-    # Allow chip time to lock after standard change
-    time.sleep(0.5)
-
-    print("\n=== ADV7280-M state (after) ===")
-    read_state(i2c)
-
-    i2c.close()
+        print("\n=== ADV7280-M state (after) ===")
+        read_state(i2c)
+    finally:
+        i2c.close()

@@ -76,6 +76,8 @@ echo "obj-m := adv7180.o" > /usr/src/adv7180_patch/Makefile
 echo "--> Apply patch to adv7180.c" 1>&2
 sed -i.bak -e "s/480 : 576/507 : 576/" /usr/src/adv7180_patch/adv7180.c
 diff /usr/src/adv7180_patch/adv7180.c.bak /usr/src/adv7180_patch/adv7180.c || true
+grep -q "507 : 576" /usr/src/adv7180_patch/adv7180.c || \
+    { echo "--- PATCH FAILED: expected string not found in adv7180.c -- kernel source may have changed" 1>&2; exit 1; }
 
 echo "--> Build adv7180.ko" 1>&2
 make -C /usr/src/linux-$KERNEL_GIT/ M=/usr/src/adv7180_patch/

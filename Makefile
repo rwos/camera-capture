@@ -10,7 +10,8 @@ upload:
 	sshpass -p "raspberry" scp capture.sh setup-adv.py setup-pi.sh install_patch.sh recorder.py recorder.service pi@camera.local:/home/pi/
 
 setup: upload
-	sshpass -p "raspberry" ssh pi@camera.local "bash /home/pi/setup-pi.sh && sudo reboot"
+	sshpass -p "raspberry" ssh pi@camera.local "bash /home/pi/setup-pi.sh"
+	-sshpass -p "raspberry" ssh pi@camera.local "sudo reboot"
 
 stream:
 	sshpass -p "raspberry" ssh pi@camera.local "$(STREAM_CMD)" | ffplay -fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0 -f mjpeg -
