@@ -1,8 +1,6 @@
 [Unit]
 Description=Analog video recorder (DVX-Nebula)
-# Wait for V4L2 device and I2C to be ready
-After=dev-video0.device
-Requires=dev-video0.device
+After=multi-user.target
 
 [Service]
 Type=simple
