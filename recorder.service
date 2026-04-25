@@ -5,6 +5,7 @@ After=multi-user.target
 [Service]
 Type=simple
 User=pi
+WorkingDirectory=/home/pi
 # Configure the ADV7280 chip before starting the recorder
 ExecStartPre=/usr/bin/python3 /home/pi/setup-adv.py
 ExecStart=/usr/bin/python3 /home/pi/recorder.py
