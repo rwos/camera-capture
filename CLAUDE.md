@@ -64,8 +64,6 @@ by `setup-pi.sh` / `make setup`.
 3. `setup-pi.sh` — One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
    a systemd service for persistent CPU performance mode, then runs `setup-adv.py`.
 
-4. `index.html` — Browser-based viewer for a live OGG/Theora stream (legacy, not used).
-
 ### Key Video Dimensions
 
 - V4L2 output: `720×576` @ 25fps, UYVY422 (driver ignores any other size request)
@@ -94,18 +92,9 @@ dtoverlay=adv728x-m,adv7280m=1
 gpu_mem=128
 ```
 
-### `dvx-nebula/` Submodule
-
-Contains DVX100 camera resources: Andromeda mod images, camera manual, and original
-capture scripts from the sdtv2csi project. Not part of the active capture workflow.
-Note: those scripts use NTSC (720x507, 29.97fps); our camera is PAL (720x576, 25fps).
-
 ## Pi Setup (one-time)
 
 ```bash
-sudo apt install ffmpeg luarocks
-sudo luarocks install bit32
-sudo luarocks install lua-periphery
 wget https://github.com/rniwase/sdtv2csi/raw/master/rpi/install_patch.sh
 sudo bash install_patch.sh
 sudo bash -c 'echo "dtoverlay=adv728x-m,adv7280m=1" >> /boot/firmware/config.txt'

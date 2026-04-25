@@ -9,7 +9,7 @@ fi
 
 echo "--> Install build dependencies" 1>&2
 apt-get update
-apt-get -y install git bc bison flex libssl-dev
+apt-get -y install curl xz-utils bc bison flex libssl-dev
 
 echo "--> Extract git commit IDs for firmware" 1>&2
 # - for bullseye
