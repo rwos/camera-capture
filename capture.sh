@@ -1,28 +1,13 @@
-#sudo sh -c "echo 8 > /sys/module/adv7180/parameters/dbg_input"
-# This is by far the most stable recorder I found.
-filename=$1
+#!/bin/bash
+# Capture analog video to MJPEG AVI using hardware JPEG encoder.
+# The Pi Zero 2W cannot do real-time UYVY→YUV420 conversion needed for H264,
+# so we use v4l2jpegenc which accepts UYVY directly (no color conversion).
+# Transcode to H264 on the Mac with: make transcode FILE=<basename>
+filename=${1:-capture}
 
-#sudo v4l2-ctl -c brightness=-128 
-#sudo ffmpeg -y -hide_banner -use_wallclock_as_timestamps 1 -t 20 -i /dev/video0 -c:v h264_v4l2m2m -cfr 23 ${filename}.mp4
-
-
-#sudo ffmpeg -y -hide_banner -use_wallclock_as_timestamps 1 -t 20 -r 29.97 -i /dev/video0 -c:v h264_v4l2m2m -video_size 720x507 -b:v 8M ${filename}.mp4
-
-
-#this is from rniwase
-#ffmpeg -an -video_size 720x507 -r 29.97 -i /dev/video0 -c:v rawvideo -vf realtime -t 10 ${filename}.asf
-
-
-
-#ffmpeg -an -video_size 720x507 -r 29.97 -i /dev/video0 -c:v rawvideo -vf realtime,crop=720:480:0:27 -t 10 out_crop.asf
-
-ffmpeg -y -hide_banner \
-    -use_wallclock_as_timestamps 1 \
-    -t 10 \
-    -video_size 720x507 -r 30 \
-    -i /dev/video0 \
-    -vf "crop=720:480:0:27,drawtext=text='%{localtime}':fontcolor=white:x=100:y=100" \
-    -c:v h264_v4l2m2m \
-    -pix_fmt yuv420p \
-    -b:v 2M \
-    ${filename}.mp4
+exec gst-launch-1.0 -e \
+    v4l2src device=/dev/video0 ! \
+    "video/x-raw,format=UYVY,width=720,height=576,framerate=25/1" ! \
+    v4l2jpegenc ! \
+    avimux ! \
+    filesink location="/home/pi/${filename}.avi"

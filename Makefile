@@ -1,19 +1,20 @@
-STREAM_CMD=ffmpeg -s 720x507 -vf video4linux2 -i /dev/video0 -f avi -
-STREAM_CMD=ffmpeg -an -video_size 720x507 -r 29.97 -i /dev/video0 -f avi -
-STREAM_CMD=ffmpeg -f v4l2 -video_size 720x480 -i /dev/video0 -c:v h264_v4l2m2m -pix_fmt yuv420p -vf "crop=720:480:0:0" -b:v 8M -f rawvideo -
-STREAM_CMD=ffmpeg -f v4l2 -video_size 720x480 -i /dev/video0 -c:v h264_v4l2m2m -pix_fmt yuv420p -vf "crop=720:480:0:0" -b:v 8M -f avi -
+FILE ?= capture
+STREAM_CMD=gst-launch-1.0 -q -e v4l2src device=/dev/video0 ! 'video/x-raw,format=UYVY,width=720,height=576,framerate=25/1' ! v4l2jpegenc ! fdsink fd=1
 
 ssh:
 	sshpass -p "raspberry" ssh pi@camera.local
 
-stream:
-	sshpass -p "raspberry" ssh pi@camera.local "$(STREAM_CMD)" | mplayer -
-
 upload:
-	sshpass -p "raspberry" scp -r ./capture.sh ./setup-adv.py pi@camera.local:/home/pi/
+	sshpass -p "raspberry" scp capture.sh setup-adv.py setup-pi.sh pi@camera.local:/home/pi/
 
-setup:
-	sshpass -p "raspberry" ssh pi@camera.local "python3 ./setup-adv.py"
+setup: upload
+	sshpass -p "raspberry" ssh pi@camera.local "bash /home/pi/setup-pi.sh"
+
+stream:
+	sshpass -p "raspberry" ssh pi@camera.local "$(STREAM_CMD)" | ffplay -fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0 -f mjpeg -
 
 down:
-	sshpass -p "raspberry" scp -v -r pi@camera.local:/home/pi/test.mp4 ./
+	sshpass -p "raspberry" scp pi@camera.local:/home/pi/$(FILE).avi ./$(FILE).avi
+
+transcode:
+	ffmpeg -i $(FILE).avi -c:v libx264 -preset fast -crf 20 -movflags +faststart $(FILE).mp4
