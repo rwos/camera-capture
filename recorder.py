@@ -2,35 +2,34 @@
 """
 Appliance-mode recorder for DVX-Nebula analog video capture hat.
 
-Button 1 (GPIO 24, corner of board): start/stop video recording
-Button 2 (GPIO 23):                  capture a still image
-Pi LED  (GPIO 29, active-low):       lit while recording; double-flash on still saved
+Button 1 (GPIO 24, corner of board): start recording
+Button 2 (GPIO 23):                  stop recording (if recording) / take still (if idle)
+Pi LED  (GPIO 29, active-low):       blinks while recording; brief blink on still saved
 
-Recordings are saved to /home/pi/recordings/ with timestamped filenames:
+Recordings saved to /home/pi/recordings/:
   video_YYYYMMDD_HHMMSS.avi
   still_YYYYMMDD_HHMMSS.jpg
-
-Still capture while recording: recording is briefly interrupted (one gap in the file),
-a still is saved, then recording resumes automatically.
 """
 
 import lgpio
 import subprocess
-import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
-BTN_RECORD = 24        # corner button — toggle recording
-BTN_STILL  = 23        # other button  — save a still
+BTN_START  = 24        # corner button — start recording
+BTN_ACTION = 23        # other button  — stop recording / take still
 LED_PIN    = 29        # Pi ACT LED, active-low
 
 RECORDINGS_DIR = Path("/home/pi/recordings")
 VIDEO_DEV      = "/dev/video0"
 GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576,framerate=25/1"
 
-DEBOUNCE_S = 0.05      # 50 ms button debounce
-POLL_S     = 0.02      # 20 ms polling interval
+DEBOUNCE_S    = 0.05   # 50 ms button debounce
+POLL_S        = 0.02   # 20 ms polling interval
+BLINK_ON_S    = 0.5    # LED on duration while recording
+BLINK_OFF_S   = 0.5    # LED off duration while recording
 
 
 def gst_record_cmd(path):
@@ -54,30 +53,51 @@ class Recorder:
         RECORDINGS_DIR.mkdir(exist_ok=True)
 
         self.h = lgpio.gpiochip_open(0)
-        lgpio.gpio_claim_input(self.h, BTN_RECORD, lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_input(self.h, BTN_STILL,  lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_output(self.h, LED_PIN, 1)   # start with LED off
+        lgpio.gpio_claim_input(self.h, BTN_START,  lgpio.SET_PULL_UP)
+        lgpio.gpio_claim_input(self.h, BTN_ACTION, lgpio.SET_PULL_UP)
+        lgpio.gpio_claim_output(self.h, LED_PIN, 1)   # LED off initially
 
-        self.proc      = None   # active recording subprocess
-        self.rec_path  = None
+        self.proc     = None    # active recording subprocess
+        self.rec_path = None
 
-        self._prev  = {BTN_RECORD: 1, BTN_STILL: 1}
-        self._last  = {BTN_RECORD: 0, BTN_STILL: 0}
+        self._blink_stop = threading.Event()
+        self._blink_thread = None
+
+        self._prev = {BTN_START: 1, BTN_ACTION: 1}
+        self._last = {BTN_START: 0, BTN_ACTION: 0}
 
     # ------------------------------------------------------------------
-    # LED helpers
+    # LED
 
     def _led(self, on):
-        lgpio.gpio_write(self.h, LED_PIN, 0 if on else 1)   # active-low
+        lgpio.gpio_write(self.h, LED_PIN, 0 if on else 1)  # active-low
 
-    def _flash(self, count=2, interval=0.1):
-        was_recording = self.proc is not None
-        for _ in range(count):
+    def _blink_loop(self):
+        while not self._blink_stop.is_set():
             self._led(True)
-            time.sleep(interval)
+            if self._blink_stop.wait(BLINK_ON_S):
+                break
             self._led(False)
-            time.sleep(interval)
-        self._led(was_recording)
+            self._blink_stop.wait(BLINK_OFF_S)
+        self._led(False)
+
+    def _start_blink(self):
+        self._blink_stop.clear()
+        self._blink_thread = threading.Thread(target=self._blink_loop, daemon=True)
+        self._blink_thread.start()
+
+    def _stop_blink(self):
+        self._blink_stop.set()
+        if self._blink_thread:
+            self._blink_thread.join()
+            self._blink_thread = None
+
+    def _flash_still(self):
+        for _ in range(2):
+            self._led(True)
+            time.sleep(0.1)
+            self._led(False)
+            time.sleep(0.1)
 
     # ------------------------------------------------------------------
     # Recording
@@ -87,36 +107,24 @@ class Recorder:
 
     def _start_recording(self):
         self.rec_path = RECORDINGS_DIR / f"video_{self._timestamp()}.avi"
-        self.proc = subprocess.Popen(
-            gst_record_cmd(self.rec_path),
-            shell=True,
-        )
-        self._led(True)
+        self.proc = subprocess.Popen(gst_record_cmd(self.rec_path), shell=True)
+        self._start_blink()
         print(f"Recording started: {self.rec_path}", flush=True)
 
     def _stop_recording(self):
+        self._stop_blink()
         if self.proc:
             self.proc.terminate()
             self.proc.wait()
             self.proc = None
-        self._led(False)
         print(f"Recording stopped: {self.rec_path}", flush=True)
         self.rec_path = None
 
     def _capture_still(self):
-        was_recording = self.proc is not None
-        if was_recording:
-            self._stop_recording()
-            time.sleep(0.1)   # let V4L2 device release
-
         path = RECORDINGS_DIR / f"still_{self._timestamp()}.jpg"
         subprocess.run(gst_still_cmd(path), shell=True, timeout=5)
         print(f"Still saved: {path}", flush=True)
-        self._flash(count=2)
-
-        if was_recording:
-            time.sleep(0.1)
-            self._start_recording()
+        self._flash_still()
 
     # ------------------------------------------------------------------
     # Main loop
@@ -133,24 +141,26 @@ class Recorder:
     def _check_recording_alive(self):
         if self.proc and self.proc.poll() is not None:
             print("Recording process exited unexpectedly — resetting", flush=True)
+            self._stop_blink()
             self.proc = None
             self.rec_path = None
-            self._led(False)
 
     def run(self):
-        print("Recorder ready.", flush=True)
+        print("Recorder ready. Button 1: start recording. Button 2: stop / still.", flush=True)
         try:
             while True:
                 now = time.monotonic()
 
-                if self._check_button(BTN_RECORD, now):
+                if self._check_button(BTN_START, now):
                     if self.proc is None:
                         self._start_recording()
-                    else:
-                        self._stop_recording()
+                    # already recording — button 1 does nothing
 
-                if self._check_button(BTN_STILL, now):
-                    self._capture_still()
+                if self._check_button(BTN_ACTION, now):
+                    if self.proc is not None:
+                        self._stop_recording()
+                    else:
+                        self._capture_still()
 
                 self._check_recording_alive()
                 time.sleep(POLL_S)
@@ -158,7 +168,8 @@ class Recorder:
         except KeyboardInterrupt:
             pass
         finally:
-            self._stop_recording()
+            if self.proc is not None:
+                self._stop_recording()
             self._led(False)
             lgpio.gpiochip_close(self.h)
 
