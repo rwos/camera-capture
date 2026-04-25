@@ -30,8 +30,9 @@ from V4L2 and encodes using the Pi's hardware JPEG encoder (`v4l2jpegenc`), whic
 UYVY directly -- no CPU-side colour conversion needed. This is the only pipeline that
 achieves full 25 fps (PAL) on the Pi Zero 2W.
 
-Captures are saved as MJPEG AVI (~1.1 MB/s). Transcode to H264 MP4 on a faster machine
-(Mac/PC) with `make transcode` -- Apple Silicon handles this in well under real-time.
+Captures are saved as MJPEG AVI (~1.1 MB/s) to the Pi's SD card. `make recordings`
+syncs them to the Mac and transcodes to H.265 MP4 -- Apple Silicon handles this in
+well under real-time.
 
 ---
 
@@ -115,8 +116,9 @@ sudo reboot
 make setup
 ```
 
-This uploads scripts to the Pi, installs GStreamer, sets the CPU governor to
-`performance` mode (persistent across reboots), and configures the ADV7280 chip.
+This uploads scripts to the Pi, installs GStreamer and the recorder service, and sets
+the CPU governor to `performance` mode (persistent across reboots). The Pi reboots
+automatically; the recorder service then starts on boot and configures the ADV7280.
 
 ---
 
@@ -135,15 +137,39 @@ python3 setup-adv.py
 
 ## Capturing video
 
+### Appliance mode (normal use)
+
+After `make setup` the Pi runs `recorder.service` automatically on every boot.
+Wait for the ACT LED to do 3 quick blinks -- that means the recorder is ready.
+While idle the LED pulses briefly every 2 seconds.
+
+| Button | Idle | Recording |
+|--------|------|-----------|
+| Button 1 (GPIO 24, corner) | Start recording | Nothing |
+| Button 2 (GPIO 23) | Capture still | Stop recording |
+
+Recordings and stills are saved to `/home/pi/recordings/` with timestamped names
+(`video_YYYYMMDD_HHMMSS.avi`, `still_YYYYMMDD_HHMMSS.jpg`).
+
+To sync to the Mac, transcode to H.265, and delete from the Pi:
+
 ```bash
-# On the Pi (via SSH):
+make recordings
+# -> recordings/video_YYYYMMDD_HHMMSS.mp4 (H.265, CRF 16)
+```
+
+### Manual capture (via SSH)
+
+```bash
+# SSH into the Pi:
+make ssh
 bash capture.sh my-clip
 # -> saves /home/pi/my-clip.avi
 
 # On Mac/PC: download and transcode
 make down FILE=my-clip
 make transcode FILE=my-clip
-# -> my-clip.mp4 (H264)
+# -> my-clip.mp4 (H.264)
 ```
 
 ---
@@ -169,10 +195,11 @@ Default Pi address is `camera.local`; edit the Makefile if yours differs.
 |--------|-------------|
 | `make ssh` | Open an interactive SSH shell on the Pi |
 | `make upload` | Copy scripts to `/home/pi/` on the Pi |
-| `make setup` | Upload + install packages + configure ADV7280 |
+| `make setup` | Upload + install packages + recorder service; reboots Pi |
 | `make stream` | Live MJPEG preview via ffplay |
+| `make recordings` | Sync `/home/pi/recordings/` to Mac, delete from Pi, transcode to H.265 |
 | `make down [FILE=name]` | Download `name.avi` from Pi (default: `capture`) |
-| `make transcode [FILE=name]` | Convert `name.avi` -> `name.mp4` (H264) on Mac |
+| `make transcode [FILE=name]` | Convert `name.avi` -> `name.mp4` (H.264) on Mac |
 
 ---
 
