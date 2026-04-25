@@ -4,7 +4,7 @@
 set -e
 
 echo "=== Installing packages ==="
-sudo apt-get install -y gstreamer1.0-tools python3-lgpio
+sudo apt-get install -y gstreamer1.0-tools python3-lgpio ffmpeg
 
 echo "=== Setting CPU governor to performance mode (persistent across reboots) ==="
 sudo tee /etc/systemd/system/cpu-performance.service > /dev/null << 'EOF'

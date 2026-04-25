@@ -43,11 +43,11 @@ def gst_record_cmd(path):
     )
 
 
-def gst_still_cmd(path):
+def ffmpeg_still_cmd(path):
+    # ffmpeg exits cleanly after -frames:v 1; gst-launch hangs after num-buffers=1
     return (
-        f"gst-launch-1.0 "
-        f"v4l2src device={VIDEO_DEV} num-buffers=1 ! '{GST_CAPS}' ! "
-        f"v4l2jpegenc ! filesink location={path}"
+        f"ffmpeg -f v4l2 -pixel_format uyvy422 -video_size 720x576 -r 25"
+        f" -i {VIDEO_DEV} -frames:v 1 -y {path}"
     )
 
 
@@ -127,7 +127,7 @@ class Recorder:
 
     def _capture_still(self):
         path = RECORDINGS_DIR / f"still_{self._timestamp()}.jpg"
-        subprocess.run(gst_still_cmd(path), shell=True, timeout=5)
+        subprocess.run(ffmpeg_still_cmd(path), shell=True, timeout=10)
         print(f"Still saved: {path}", flush=True)
         self._flash_still()
 

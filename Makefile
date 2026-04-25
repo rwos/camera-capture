@@ -16,5 +16,9 @@ stream:
 down:
 	sshpass -p "raspberry" scp pi@camera.local:/home/pi/$(FILE).avi ./$(FILE).avi
 
+recordings:
+	mkdir -p recordings
+	sshpass -p "raspberry" scp -r pi@camera.local:/home/pi/recordings/. recordings/
+
 transcode:
 	ffmpeg -i $(FILE).avi -c:v libx264 -preset fast -crf 20 -movflags +faststart $(FILE).mp4
