@@ -138,7 +138,7 @@ class Recorder:
         os.killpg(proc.pid, signal.SIGINT)
         proc.wait()
 
-        subprocess.run(f"ffmpeg -i {avi} -frames:v 1 -y {jpg}",
+        subprocess.run(f"ffmpeg -i {avi} -ss 0.8 -frames:v 1 -y {jpg}",
                        shell=True, capture_output=True)
         print(f"Still saved: {jpg}", flush=True)
         self._flash_still()                          # confirm: double-blink
