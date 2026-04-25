@@ -12,6 +12,7 @@ Recordings saved to /home/pi/recordings/:
 """
 
 import lgpio
+import os
 import signal
 import subprocess
 import threading
@@ -108,14 +109,15 @@ class Recorder:
 
     def _start_recording(self):
         self.rec_path = RECORDINGS_DIR / f"video_{self._timestamp()}.avi"
-        self.proc = subprocess.Popen(gst_record_cmd(self.rec_path), shell=True)
+        self.proc = subprocess.Popen(
+            gst_record_cmd(self.rec_path), shell=True, start_new_session=True)
         self._start_blink()
         print(f"Recording started: {self.rec_path}", flush=True)
 
     def _stop_recording(self):
         self._stop_blink()
         if self.proc:
-            self.proc.terminate()
+            os.killpg(self.proc.pid, signal.SIGINT)  # SIGINT triggers -e EOS flush
             self.proc.wait()
             self.proc = None
         print(f"Recording stopped: {self.rec_path}", flush=True)
@@ -130,9 +132,10 @@ class Recorder:
 
         # Record a short clip using the normal pipeline, then extract one frame.
         # gst-launch-1.0 -e exits cleanly on SIGINT, flushing the AVI properly.
-        proc = subprocess.Popen(gst_record_cmd(avi), shell=True)
+        proc = subprocess.Popen(
+            gst_record_cmd(avi), shell=True, start_new_session=True)
         time.sleep(STILL_DURATION_S)
-        proc.send_signal(signal.SIGINT)
+        os.killpg(proc.pid, signal.SIGINT)
         proc.wait()
 
         subprocess.run(f"ffmpeg -i {avi} -frames:v 1 -y {jpg}",
