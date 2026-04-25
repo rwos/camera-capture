@@ -29,4 +29,4 @@ sudo cp /home/pi/recorder.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable recorder
 
-echo "=== Setup complete — reboot to start the recorder ==="
+echo "=== Setup complete ==="
