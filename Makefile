@@ -10,10 +10,10 @@ stream:
 	sshpass -p "raspberry" ssh pi@camera.local "$(STREAM_CMD)" | mplayer -
 
 upload:
-	sshpass -p "raspberry" scp -v -r ./capture.sh ./setup-adv.lua pi@camera.local:/home/pi/
+	sshpass -p "raspberry" scp -r ./capture.sh ./setup-adv.py pi@camera.local:/home/pi/
 
 setup:
-	sshpass -p "raspberry" ssh pi@camera.local "lua ./setup-adv.lua"
+	sshpass -p "raspberry" ssh pi@camera.local "python3 ./setup-adv.py"
 
 down:
 	sshpass -p "raspberry" scp -v -r pi@camera.local:/home/pi/test.mp4 ./
