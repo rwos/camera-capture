@@ -152,10 +152,12 @@ class Recorder:
         self.rec_path = None
 
     def _capture_still(self):
+        self._led(True)                              # immediate: button registered
+        print("Still: capturing...", flush=True)
         path = RECORDINGS_DIR / f"still_{self._timestamp()}.jpg"
         capture_still(path)
         print(f"Still saved: {path}", flush=True)
-        self._flash_still()
+        self._flash_still()                          # confirm: double-blink
 
     # ------------------------------------------------------------------
     # Main loop
