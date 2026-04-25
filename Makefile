@@ -18,7 +18,7 @@ down:
 
 recordings:
 	mkdir -p recordings
-	sshpass -p "raspberry" scp -r pi@camera.local:/home/pi/recordings/. recordings/
+	sshpass -p "raspberry" rsync -ah --progress pi@camera.local:/home/pi/recordings/ recordings/
 
 transcode:
 	ffmpeg -i $(FILE).avi -c:v libx264 -preset fast -crf 20 -movflags +faststart $(FILE).mp4
