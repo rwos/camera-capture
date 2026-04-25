@@ -74,7 +74,7 @@ cp /usr/src/linux-$KERNEL_GIT/drivers/media/i2c/adv7180.c /usr/src/adv7180_patch
 echo "obj-m := adv7180.o" > /usr/src/adv7180_patch/Makefile
 
 echo "--> Apply patch to adv7180.c" 1>&2
-#sed -i.bak -e "s/480 : 576/507 : 576/" /usr/src/adv7180_patch/adv7180.c
+sed -i.bak -e "s/480 : 576/507 : 576/" /usr/src/adv7180_patch/adv7180.c
 diff /usr/src/adv7180_patch/adv7180.c.bak /usr/src/adv7180_patch/adv7180.c || true
 
 echo "--> Build adv7180.ko" 1>&2

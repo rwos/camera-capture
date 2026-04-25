@@ -19,10 +19,10 @@ filename=$1
 ffmpeg -y -hide_banner \
     -use_wallclock_as_timestamps 1 \
     -t 10 \
-    -i /dev/video0 \
-    -vf "drawtext=text='%{localtime}':fontcolor=white:x=100:y=100" \
-    -c:v h264_v4l2m2m \
     -video_size 720x507 -r 30 \
+    -i /dev/video0 \
+    -vf "crop=720:480:0:27,drawtext=text='%{localtime}':fontcolor=white:x=100:y=100" \
+    -c:v h264_v4l2m2m \
     -pix_fmt yuv420p \
     -b:v 2M \
     ${filename}.mp4
