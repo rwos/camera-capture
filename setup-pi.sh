@@ -29,7 +29,4 @@ sudo cp /home/pi/recorder.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable recorder
 
-echo "=== Configuring ADV7280 chip ==="
-python3 /home/pi/setup-adv.py
-
-echo "=== Setup complete ==="
+echo "=== Setup complete — reboot to start the recorder ==="
