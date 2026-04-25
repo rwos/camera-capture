@@ -43,12 +43,38 @@ def gst_record_cmd(path):
     )
 
 
-def ffmpeg_still_cmd(path):
-    # ffmpeg exits cleanly after -frames:v 1; gst-launch hangs after num-buffers=1
-    return (
-        f"ffmpeg -f v4l2 -pixel_format uyvy422 -video_size 720x576 -r 25"
-        f" -i {VIDEO_DEV} -frames:v 1 -y {path}"
+def capture_still(path):
+    """
+    Stream MJPEG from GStreamer into a pipe and extract the first complete JPEG frame.
+    Avoids relying on gst-launch or ffmpeg exiting cleanly after one frame,
+    which both hang on this device.
+    """
+    proc = subprocess.Popen(
+        f"gst-launch-1.0 -q v4l2src device={VIDEO_DEV} ! '{GST_CAPS}' ! "
+        f"v4l2jpegenc ! fdsink fd=1",
+        shell=True, stdout=subprocess.PIPE,
     )
+    try:
+        buf = b''
+        soi = None
+        while True:
+            chunk = proc.stdout.read(4096)
+            if not chunk:
+                break
+            buf += chunk
+            if soi is None:
+                idx = buf.find(b'\xff\xd8')
+                if idx != -1:
+                    buf = buf[idx:]   # trim to start of JPEG
+                    soi = 0
+            if soi is not None:
+                eoi = buf.find(b'\xff\xd9', 2)
+                if eoi != -1:
+                    Path(path).write_bytes(buf[:eoi + 2])
+                    return
+    finally:
+        proc.terminate()
+        proc.wait()
 
 
 class Recorder:
@@ -127,7 +153,7 @@ class Recorder:
 
     def _capture_still(self):
         path = RECORDINGS_DIR / f"still_{self._timestamp()}.jpg"
-        subprocess.run(ffmpeg_still_cmd(path), shell=True, timeout=10)
+        capture_still(path)
         print(f"Still saved: {path}", flush=True)
         self._flash_still()
 
