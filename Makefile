@@ -22,6 +22,13 @@ down:
 recordings:
 	mkdir -p recordings
 	sshpass -p "raspberry" rsync -ah --progress --ignore-existing pi@camera.local:/home/pi/recordings/ recordings/
+	sshpass -p "raspberry" ssh pi@camera.local "find /home/pi/recordings/ -type f \( -name '*.avi' -o -name '*.jpg' \) -delete"
+	for f in recordings/*.avi; do \
+		[ -f "$$f" ] || continue; \
+		out="$${f%.avi}.mp4"; \
+		[ -f "$$out" ] && continue; \
+		ffmpeg -i "$$f" -c:v libx265 -crf 16 -preset fast -tag:v hvc1 -movflags +faststart "$$out"; \
+	done
 
 transcode:
 	ffmpeg -i $(FILE).avi -c:v libx264 -preset fast -crf 20 -movflags +faststart $(FILE).mp4
