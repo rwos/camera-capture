@@ -27,7 +27,7 @@ echo "CPU governor: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)
 echo "=== Installing recorder service ==="
 sudo cp /home/pi/recorder.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now recorder
+sudo systemctl enable recorder
 
 echo "=== Configuring ADV7280 chip ==="
 python3 /home/pi/setup-adv.py
