@@ -4,7 +4,7 @@ Appliance-mode recorder for DVX-Nebula analog video capture hat.
 
 Button 1 (GPIO 24, corner of board): start recording
 Button 2 (GPIO 23):                  stop recording (if recording) / take still (if idle)
-Pi LED  (GPIO 29, active-low):       blinks while recording; brief blink on still saved
+Pi ACT LED (sysfs):                  blinks while recording; brief blink on still saved
 
 Recordings saved to /home/pi/recordings/:
   video_YYYYMMDD_HHMMSS.avi
@@ -20,7 +20,10 @@ from pathlib import Path
 
 BTN_START  = 24        # corner button — start recording
 BTN_ACTION = 23        # other button  — stop recording / take still
-LED_PIN    = 29        # Pi ACT LED, active-low
+
+# Pi ACT LED — controlled via sysfs (kernel owns the GPIO)
+LED_TRIGGER    = Path("/sys/class/leds/ACT/trigger")
+LED_BRIGHTNESS = Path("/sys/class/leds/ACT/brightness")
 
 RECORDINGS_DIR = Path("/home/pi/recordings")
 VIDEO_DEV      = "/dev/video0"
@@ -55,7 +58,9 @@ class Recorder:
         self.h = lgpio.gpiochip_open(0)
         lgpio.gpio_claim_input(self.h, BTN_START,  lgpio.SET_PULL_UP)
         lgpio.gpio_claim_input(self.h, BTN_ACTION, lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_output(self.h, LED_PIN, 1)   # LED off initially
+
+        LED_TRIGGER.write_text("none\n")    # take manual control of ACT LED
+        LED_BRIGHTNESS.write_text("0\n")    # start with LED off
 
         self.proc     = None    # active recording subprocess
         self.rec_path = None
@@ -70,7 +75,7 @@ class Recorder:
     # LED
 
     def _led(self, on):
-        lgpio.gpio_write(self.h, LED_PIN, 0 if on else 1)  # active-low
+        LED_BRIGHTNESS.write_text("1\n" if on else "0\n")
 
     def _blink_loop(self):
         while not self._blink_stop.is_set():
@@ -171,6 +176,7 @@ class Recorder:
             if self.proc is not None:
                 self._stop_recording()
             self._led(False)
+            LED_TRIGGER.write_text("mmc0\n")   # restore normal SD activity LED
             lgpio.gpiochip_close(self.h)
 
 
