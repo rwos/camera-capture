@@ -198,8 +198,8 @@ bash capture.sh my-clip
 
 # On Mac/PC: download and transcode
 make down FILE=my-clip
-make transcode FILE=my-clip
-# -> my-clip.mp4 (H.264)
+make transcode FILE=my-clip       # -> my-clip.mp4      (H.264, normal speed)
+make transcode-slow FILE=my-clip  # -> my-clip_slow.mp4 (H.264, half speed)
 ```
 
 ---
@@ -230,6 +230,7 @@ Default Pi address is `camera.local`; edit the Makefile if yours differs.
 | `make recordings` | Sync `/home/pi/recordings/` to Mac, delete from Pi, transcode to H.265 |
 | `make down [FILE=name]` | Download `name.avi` from Pi (default: `capture`) |
 | `make transcode [FILE=name]` | Convert `name.avi` -> `name.mp4` (H.264) on Mac |
+| `make transcode-slow [FILE=name]` | Same but half-speed: all 50fps frames played at 25fps |
 | `stills-from-video <rate> <file>` | Extract JPEG stills from AVI at rate 1–50 fps |
 
 ---

@@ -1,6 +1,6 @@
 FILE ?= capture
 
-.PHONY: ssh upload setup stream recordings down transcode
+.PHONY: ssh upload setup stream recordings down transcode transcode-slow
 STREAM_CMD=gst-launch-1.0 -q -e v4l2src device=/dev/video0 ! 'video/x-raw,format=UYVY,width=720,height=576,framerate=50/1' ! v4l2jpegenc ! fdsink fd=1
 
 ssh:
@@ -32,3 +32,6 @@ recordings:
 
 transcode:
 	ffmpeg -i $(FILE).avi -c:v libx264 -preset fast -crf 20 -movflags +faststart $(FILE).mp4
+
+transcode-slow:
+	ffmpeg -i $(FILE).avi -vf "setpts=2.0*PTS" -r 25 -c:v libx264 -preset fast -crf 20 -movflags +faststart $(FILE)_slow.mp4

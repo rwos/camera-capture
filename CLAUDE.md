@@ -18,7 +18,8 @@ make upload                 # Deploy scripts to /home/pi/
 make setup                  # Full Pi setup: install packages, CPU governor, configure ADV7280
 make stream                 # Live MJPEG preview via ffplay (low latency, for debugging)
 make down [FILE=basename]   # Download captured AVI from Pi (default: capture.avi)
-make transcode [FILE=basename]  # Convert AVI -> H264 MP4 on Mac (default: capture)
+make transcode [FILE=basename]       # Convert AVI -> H264 MP4 on Mac (default: capture)
+make transcode-slow [FILE=basename]  # Same but half-speed: all frames played at 25fps
 ```
 
 Capture workflow:
