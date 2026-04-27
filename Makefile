@@ -10,8 +10,8 @@ upload:
 
 initial-setup: upload
 	@echo "Patching /boot/firmware/config.txt..."
-	sshpass -p "raspberry" ssh pi@camera.local "sudo sed -i '/^dtoverlay=adv728x/d' /boot/firmware/config.txt && sudo bash -c 'echo dtoverlay=adv728x-m,adv7280m=1 >> /boot/firmware/config.txt'"
-	sshpass -p "raspberry" ssh pi@camera.local "sudo sed -i '/^gpu_mem=/d' /boot/firmware/config.txt && sudo bash -c 'echo gpu_mem=128 >> /boot/firmware/config.txt'"
+	sshpass -p "raspberry" ssh pi@camera.local "grep -qxF 'dtoverlay=adv728x-m,adv7280m=1' /boot/firmware/config.txt || sudo bash -c 'echo dtoverlay=adv728x-m,adv7280m=1 >> /boot/firmware/config.txt'"
+	sshpass -p "raspberry" ssh pi@camera.local "grep -qxF 'gpu_mem=128' /boot/firmware/config.txt || sudo bash -c 'echo gpu_mem=128 >> /boot/firmware/config.txt'"
 	@echo "Building and installing patched adv7180 kernel module (takes a few minutes)..."
 	sshpass -p "raspberry" ssh pi@camera.local "sudo bash /home/pi/install_patch.sh"
 	@echo "Installing packages and setting up recorder service..."
