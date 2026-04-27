@@ -172,7 +172,8 @@ To sync to the Mac, transcode to H.265, and delete from the Pi:
 
 ```bash
 make recordings
-# -> recordings/video_YYYYMMDD_HHMMSS.mp4 (H.265, CRF 16)
+# -> recordings/video_YYYYMMDD_HHMMSS.mp4      (H.265, CRF 16, normal speed)
+# -> recordings/video_YYYYMMDD_HHMMSS_slow.mp4 (H.265, CRF 16, half speed)
 ```
 
 ### Extracting stills from a recording
@@ -227,7 +228,7 @@ Default Pi address is `camera.local`; edit the Makefile if yours differs.
 | `make upload` | Copy scripts to `/home/pi/` on the Pi |
 | `make setup` | Upload + install packages + recorder service; reboots Pi |
 | `make stream` | Live MJPEG preview via ffplay |
-| `make recordings` | Sync `/home/pi/recordings/` to Mac, delete from Pi, transcode to H.265 |
+| `make recordings` | Sync `/home/pi/recordings/` to Mac, delete from Pi, transcode to H.265 (normal + half-speed) |
 | `make down [FILE=name]` | Download `name.avi` from Pi (default: `capture`) |
 | `make transcode [FILE=name]` | Convert `name.avi` -> `name.mp4` (H.264) on Mac |
 | `make transcode-slow [FILE=name]` | Same but half-speed: all 50fps frames played at 25fps |

@@ -26,8 +26,9 @@ recordings:
 	for f in recordings/*.avi; do \
 		[ -f "$$f" ] || continue; \
 		out="$${f%.avi}.mp4"; \
-		[ -f "$$out" ] && continue; \
-		ffmpeg -i "$$f" -c:v libx265 -crf 16 -preset fast -tag:v hvc1 -movflags +faststart "$$out"; \
+		slow="$${f%.avi}_slow.mp4"; \
+		[ -f "$$out" ] || ffmpeg -i "$$f" -c:v libx265 -crf 16 -preset fast -tag:v hvc1 -movflags +faststart "$$out"; \
+		[ -f "$$slow" ] || ffmpeg -i "$$f" -vf "setpts=2.0*PTS" -r 25 -c:v libx265 -crf 16 -preset fast -tag:v hvc1 -movflags +faststart "$$slow"; \
 	done
 
 transcode:
