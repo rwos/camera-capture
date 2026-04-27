@@ -50,29 +50,17 @@ import time
 # Configuration -- adjust for your source signal / preferences
 # ---------------------------------------------------------------------------
 
-# Signal standard. Sets the decoder mode AND tells the kernel the correct
-# output height (PAL=576, NTSC=507 with patched driver).
+# Signal standard. Sets decoder mode and kernel output height (PAL=576, NTSC=507).
+# If changed, also update height and framerate in recorder.py and Makefile (STREAM_CMD).
 # "PAL"  = PAL B/G (European cameras, most consumer camcorders outside USA/Japan)
 # "NTSC" = NTSC-M  (USA/Japan cameras)
 # "AUTO" = autodetect (chip decides; kernel height stays wrong at NTSC default)
 STANDARD = "PAL"
 
-# I2P deinterlacing: converts interlaced analog source to progressive output.
-# Strongly recommended for capture quality.
-#
-# Frame rate effect: the ADV7280 I2P outputs one progressive frame per analog
-# field (not per field-pair), which doubles the output rate:
-#   PAL:  25 fps source  ->  50 fps capture
-#   NTSC: ~30 fps source -> ~60 fps capture  (59.94 fields/s -> ~59.94 fps)
-# The GStreamer caps and AVI container header must match this doubled rate
-# (framerate=50/1 for PAL, 60000/1001 for NTSC) or playback will be at the
-# wrong speed. See the framerate setting in recorder.py.
-#
-# To capture at the native frame rate (25 fps PAL / ~30 fps NTSC):
-#   Set ENABLE_I2P = False below, then change the framerate in recorder.py
-#   to 25/1 (PAL) or 30000/1001 (NTSC).
-#   Output will be interlaced (V4L2_FIELD_ALTERNATE) and will require software
-#   deinterlacing in post-production.
+# I2P deinterlacing: converts interlaced fields to progressive frames, doubling
+# output rate (PAL: 25fps -> 50fps, NTSC: ~30fps -> ~60fps). Strongly recommended.
+# If disabled, update framerate in recorder.py and Makefile (STREAM_CMD) to match.
+# Interlaced output (V4L2_FIELD_ALTERNATE) will need deinterlacing in post.
 ENABLE_I2P = True
 
 # AGC (Automatic Gain Control): normalises gain across scenes.

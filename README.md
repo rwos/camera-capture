@@ -53,7 +53,7 @@ In `setup-adv.py`, near the top:
 STANDARD = "PAL"   # "PAL" for European/50Hz cameras, "NTSC" for USA/Japan/60Hz
 ```
 
-And in `recorder.py`, the GStreamer caps line:
+And in `recorder.py` and the `Makefile` (`STREAM_CMD`), the GStreamer caps:
 
 ```bash
 "video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
@@ -63,8 +63,8 @@ And in `recorder.py`, the GStreamer caps line:
 ```
 
 The framerate is doubled by I2P deinterlacing (one frame per field). If you disable
-`ENABLE_I2P` in `setup-adv.py`, change the framerate here to match the native source
-rate: `25/1` for PAL, `30000/1001` for NTSC.
+`ENABLE_I2P` in `setup-adv.py`, update the framerate in both places to match the native
+source rate: `25/1` for PAL, `30000/1001` for NTSC.
 
 ---
 
