@@ -8,12 +8,17 @@ Pi ACT LED (sysfs):                  blinks while recording
 
 Recordings saved to /home/pi/recordings/:
   video_YYYYMMDD_HHMMSS.avi
+
+Usage:
+  recorder.py           -- appliance mode (button-driven, runs forever)
+  recorder.py --stream  -- stream MJPEG to stdout; pipe to ffplay on the Mac
 """
 
 import lgpio
 import os
 import signal
 import subprocess
+import sys
 import threading
 import time
 from datetime import datetime
@@ -35,14 +40,14 @@ VIDEO_DEV      = "/dev/video0"
 # set ENABLE_I2P = False in setup-adv.py and change framerate to 25/1 or 30000/1001.
 GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
 
-DEBOUNCE_S       = 0.05   # 50 ms button debounce
-POLL_S           = 0.02   # 20 ms polling interval
-BLINK_ON_S          = 0.5    # LED on duration while recording
-BLINK_OFF_S         = 0.5    # LED off duration while recording
-HEARTBEAT_S         = 2.5    # pause between idle double-blinks
-HEARTBEAT_BLINK_S   = 0.08   # each pulse in the idle double-blink
-HEARTBEAT_GAP_S     = 0.12   # gap between the two pulses
-STARTUP_BLINKS      = 3      # number of blinks on startup
+DEBOUNCE_S        = 0.05   # 50 ms button debounce
+POLL_S            = 0.02   # 20 ms polling interval
+BLINK_ON_S        = 0.5    # LED on duration while recording
+BLINK_OFF_S       = 0.5    # LED off duration while recording
+HEARTBEAT_S       = 2.5    # pause between idle double-blinks
+HEARTBEAT_BLINK_S = 0.08   # each pulse in the idle double-blink
+HEARTBEAT_GAP_S   = 0.12   # gap between the two pulses
+STARTUP_BLINKS    = 3      # number of blinks on startup
 
 
 def gst_record_cmd(path):
@@ -50,6 +55,14 @@ def gst_record_cmd(path):
         f"gst-launch-1.0 -e "
         f"v4l2src device={VIDEO_DEV} ! '{GST_CAPS}' ! "
         f"v4l2jpegenc ! avimux ! filesink location='{path}'"
+    )
+
+
+def gst_stream_cmd():
+    return (
+        f"gst-launch-1.0 -q -e "
+        f"v4l2src device={VIDEO_DEV} ! '{GST_CAPS}' ! "
+        f"v4l2jpegenc ! fdsink fd=1"
     )
 
 
@@ -185,4 +198,7 @@ class Recorder:
 
 
 if __name__ == "__main__":
-    Recorder().run()
+    if "--stream" in sys.argv:
+        subprocess.run(gst_stream_cmd(), shell=True)
+    else:
+        Recorder().run()

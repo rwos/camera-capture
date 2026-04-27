@@ -51,7 +51,7 @@ import time
 # ---------------------------------------------------------------------------
 
 # Signal standard. Sets decoder mode and kernel output height (PAL=576, NTSC=507).
-# If changed, also update height and framerate in recorder.py and Makefile (STREAM_CMD).
+# If changed, also update height and framerate in recorder.py (GST_CAPS).
 # "PAL"  = PAL B/G (European cameras, most consumer camcorders outside USA/Japan)
 # "NTSC" = NTSC-M  (USA/Japan cameras)
 # "AUTO" = autodetect (chip decides; kernel height stays wrong at NTSC default)
@@ -59,7 +59,7 @@ STANDARD = "PAL"
 
 # I2P deinterlacing: converts interlaced fields to progressive frames, doubling
 # output rate (PAL: 25fps -> 50fps, NTSC: ~30fps -> ~60fps). Strongly recommended.
-# If disabled, update framerate in recorder.py and Makefile (STREAM_CMD) to match.
+# If disabled, update framerate in recorder.py (GST_CAPS) to match.
 # Interlaced output (V4L2_FIELD_ALTERNATE) will need deinterlacing in post.
 ENABLE_I2P = True
 

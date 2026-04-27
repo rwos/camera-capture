@@ -1,5 +1,4 @@
 .PHONY: ssh upload initial-setup stream recordings
-STREAM_CMD=gst-launch-1.0 -q -e v4l2src device=/dev/video0 ! 'video/x-raw,format=UYVY,width=720,height=576,framerate=50/1' ! v4l2jpegenc ! fdsink fd=1
 
 ssh:
 	sshpass -p "raspberry" ssh pi@camera.local
@@ -20,7 +19,7 @@ initial-setup: upload
 	-sshpass -p "raspberry" ssh pi@camera.local "sudo reboot"
 
 stream:
-	sshpass -p "raspberry" ssh pi@camera.local "$(STREAM_CMD)" | ffplay -fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0 -f mjpeg -
+	sshpass -p "raspberry" ssh pi@camera.local "python3 /home/pi/recorder.py --stream" | ffplay -fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0 -f mjpeg -
 
 recordings:
 	mkdir -p recordings
