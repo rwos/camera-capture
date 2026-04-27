@@ -7,7 +7,7 @@
 Capture analog video (composite CVBS or S-Video) at full quality on a Raspberry Pi Zero 2W,
 using the [ADV7280 uHat Shield](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield).
 
-Available from [Ethermata on Tindie](https://www.tindie.com/products/ethermata/analog-video-capture-adv7280m-uhat-prototype/). Based on the [sdtv2csi](https://github.com/rniwase/sdtv2csi) project by rniwase.
+Available from [Ethermata on Tindie](https://www.tindie.com/products/ethermata/analog-video-capture-adv7280m-uhat-prototype/). Hardware repo (geared towards the DVX100): [lerabot/dvx-nebula](https://github.com/lerabot/dvx-nebula). Based on the [sdtv2csi](https://github.com/rniwase/sdtv2csi) project by rniwase.
 
 ---
 
@@ -68,8 +68,10 @@ Do this once, from your Mac/PC:
 
 ### 1. Flash Raspberry Pi OS Bookworm (64-bit Lite) to the SD card
 
-Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Configure SSH and
-your network credentials in the imager before writing.
+Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/). In the "Edit Settings" dialog,
+configure SSH, your network credentials, and the hostname (set it to `camera` to get
+`camera.local` on the network). The `.local` resolution is handled automatically by
+Avahi, which ships with Raspberry Pi OS.
 
 ### 2. Boot the Pi and set config.txt
 
