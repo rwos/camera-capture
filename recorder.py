@@ -3,12 +3,11 @@
 Appliance-mode recorder for DVX-Nebula analog video capture hat.
 
 Button 1 (GPIO 24, corner of board): start recording
-Button 2 (GPIO 23):                  stop recording (if recording) / take still (if idle)
-Pi ACT LED (sysfs):                  blinks while recording; brief blink on still saved
+Button 2 (GPIO 23):                  stop recording (if recording); idle: no-op
+Pi ACT LED (sysfs):                  blinks while recording
 
 Recordings saved to /home/pi/recordings/:
   video_YYYYMMDD_HHMMSS.avi
-  still_YYYYMMDD_HHMMSS.jpg
 """
 
 import lgpio
@@ -21,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 BTN_START  = 24        # corner button -- start recording
-BTN_ACTION = 23        # other button  -- stop recording / take still
+BTN_ACTION = 23        # other button  -- stop recording
 
 # Pi ACT LED -- controlled via sysfs (kernel owns the GPIO)
 LED_TRIGGER    = Path("/sys/class/leds/ACT/trigger")
@@ -29,7 +28,12 @@ LED_BRIGHTNESS = Path("/sys/class/leds/ACT/brightness")
 
 RECORDINGS_DIR = Path("/home/pi/recordings")
 VIDEO_DEV      = "/dev/video0"
-GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576,framerate=25/1"
+# With I2P deinterlacing enabled, the ADV7280 outputs one progressive frame per
+# analog field, doubling the frame rate: PAL 25fps -> 50fps, NTSC ~30fps -> ~60fps.
+# This must match the actual hardware output or the AVI header will be wrong
+# (causing wrong playback speed). To get native 25fps (PAL) / ~30fps (NTSC),
+# set ENABLE_I2P = False in setup-adv.py and change framerate to 25/1 or 30000/1001.
+GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
 
 DEBOUNCE_S       = 0.05   # 50 ms button debounce
 POLL_S           = 0.02   # 20 ms polling interval
@@ -46,9 +50,6 @@ def gst_record_cmd(path):
         f"v4l2src device={VIDEO_DEV} ! '{GST_CAPS}' ! "
         f"v4l2jpegenc ! avimux ! filesink location='{path}'"
     )
-
-
-STILL_DURATION_S = 1.0   # how long to record before extracting the still frame
 
 
 class Recorder:
@@ -104,13 +105,6 @@ class Recorder:
             self._led(False)
             time.sleep(0.1)
 
-    def _flash_still(self):
-        for _ in range(2):
-            self._led(True)
-            time.sleep(0.1)
-            self._led(False)
-            time.sleep(0.1)
-
     # ------------------------------------------------------------------
     # Recording
 
@@ -133,26 +127,6 @@ class Recorder:
         print(f"Recording stopped: {self.rec_path}", flush=True)
         self.rec_path = None
 
-    def _capture_still(self):
-        self._led(True)                              # immediate: button registered
-        print("Still: capturing...", flush=True)
-        ts = self._timestamp()
-        avi  = RECORDINGS_DIR / f"still_{ts}.avi"
-        jpg  = RECORDINGS_DIR / f"still_{ts}.jpg"
-
-        # Record a short clip using the normal pipeline, then extract one frame.
-        # gst-launch-1.0 -e exits cleanly on SIGINT, flushing the AVI properly.
-        proc = subprocess.Popen(
-            gst_record_cmd(avi), shell=True, start_new_session=True)
-        time.sleep(STILL_DURATION_S)
-        os.killpg(proc.pid, signal.SIGINT)
-        proc.wait()
-
-        subprocess.run(f"ffmpeg -i {avi} -ss 0.8 -frames:v 1 -y {jpg}",
-                       shell=True, capture_output=True)
-        print(f"Still saved: {jpg}", flush=True)
-        self._flash_still()                          # confirm: double-blink
-
     # ------------------------------------------------------------------
     # Main loop
 
@@ -174,7 +148,7 @@ class Recorder:
 
     def run(self):
         self._flash_startup()
-        print("Recorder ready. Button 1: start recording. Button 2: stop / still.", flush=True)
+        print("Recorder ready. Button 1: start recording. Button 2: stop.", flush=True)
         next_heartbeat = time.monotonic() + HEARTBEAT_S
         try:
             while True:
@@ -188,8 +162,6 @@ class Recorder:
                 if self._check_button(BTN_ACTION, now):
                     if self.proc is not None:
                         self._stop_recording()
-                    else:
-                        self._capture_still()
 
                 self._check_recording_alive()
 

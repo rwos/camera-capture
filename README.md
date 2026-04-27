@@ -1,5 +1,10 @@
 # Raspberry Pi Analog Video Capture
 
+> **Warning:** This project is vibe-coded entirely with AI assistance. It seems to work
+> for me, but explanations, comments, and technical details — especially around the
+> ADV7280 register configuration and GStreamer pipeline — may be partially or completely
+> wrong. Use with appropriate scepticism.
+
 Capture analog video (composite CVBS or S-Video) at full quality on a Raspberry Pi Zero 2W,
 using the [DVX-Nebula ADV7280 uHAT](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield).
 
@@ -28,7 +33,14 @@ The ADV7280 converts analog video to a digital UYVY stream over MIPI CSI-2. A pa
 `adv7180` kernel module tells the driver the correct frame dimensions. GStreamer captures
 from V4L2 and encodes using the Pi's hardware JPEG encoder (`v4l2jpegenc`), which accepts
 UYVY directly -- no CPU-side colour conversion needed. This is the only pipeline that
-achieves full 25 fps (PAL) on the Pi Zero 2W.
+runs without frame drops on the Pi Zero 2W.
+
+**Frame rate:** with I2P deinterlacing enabled (the default), the ADV7280 outputs one
+progressive frame per analog *field* rather than per frame-pair. This doubles the output
+rate relative to the source: PAL captures at **50 fps**, NTSC at **~60 fps** (59.94).
+To capture at the native source rate (25 fps PAL / ~30 fps NTSC) as interlaced video,
+set `ENABLE_I2P = False` in `setup-adv.py` and update the `framerate` in `capture.sh`
+and `recorder.py` to match (see comments in those files).
 
 Captures are saved as MJPEG AVI (~1.1 MB/s) to the Pi's SD card. `make recordings`
 syncs them to the Mac and transcodes to H.265 MP4 -- Apple Silicon handles this in
@@ -46,14 +58,19 @@ In `setup-adv.py`, near the top:
 STANDARD = "PAL"   # "PAL" for European/50Hz cameras, "NTSC" for USA/Japan/60Hz
 ```
 
-And in `capture.sh`, the GStreamer caps line:
+And in `capture.sh` (and `recorder.py`), the GStreamer caps line:
 
 ```bash
-"video/x-raw,format=UYVY,width=720,height=576,framerate=25/1"
-#                                        ^^^         ^^
-#                         PAL=576, NTSC=507*         PAL=25, NTSC=30 (29.97)
+"video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
+#                                        ^^^              ^^
+#                         PAL=576, NTSC=507*    with I2P: PAL=50, NTSC=60000/1001 (~60)
+#                                               no I2P:   PAL=25/1, NTSC=30000/1001
 # * NTSC=507 requires the patched adv7180 kernel module (install_patch.sh)
 ```
+
+The framerate is doubled by I2P deinterlacing (one frame per field). If you disable
+`ENABLE_I2P` in `setup-adv.py`, change the framerate here to match the native source
+rate: `25/1` for PAL, `30000/1001` for NTSC.
 
 Input type (composite vs S-Video) is set by the device tree overlay and matches the
 physical connector you plug into. See the DVX-Nebula documentation for wiring.
@@ -146,10 +163,10 @@ While idle the LED pulses briefly every 2 seconds.
 | Button | Idle | Recording |
 |--------|------|-----------|
 | Button 1 (GPIO 24, corner) | Start recording | Nothing |
-| Button 2 (GPIO 23) | Capture still | Stop recording |
+| Button 2 (GPIO 23) | Nothing | Stop recording |
 
-Recordings and stills are saved to `/home/pi/recordings/` with timestamped names
-(`video_YYYYMMDD_HHMMSS.avi`, `still_YYYYMMDD_HHMMSS.jpg`).
+Recordings are saved to `/home/pi/recordings/` with timestamped names
+(`video_YYYYMMDD_HHMMSS.avi`).
 
 To sync to the Mac, transcode to H.265, and delete from the Pi:
 

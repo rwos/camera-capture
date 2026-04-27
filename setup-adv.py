@@ -26,6 +26,10 @@ Line count / framing note (sdtv2csi issue #1, github.com/rniwase/sdtv2csi):
   must match the standard: 720x507 for NTSC, 720x576 for PAL (plus blanking
   offset crop if needed). See Table 72 of ADI UG-1176 for exact line counts.
 
+  Frame rate note: I2P outputs one frame per field (not per field-pair), so
+  capture rates are doubled vs. the source: PAL 50fps, NTSC ~60fps (59.94).
+  GStreamer caps and AVI/MP4 container headers must use these doubled rates.
+
   Setting STANDARD correctly here ensures the kernel reports the right height
   to capture tools (FFmpeg etc.). Without this, the kernel defaults to NTSC
   dimensions regardless of the actual signal.
@@ -54,7 +58,21 @@ import time
 STANDARD = "PAL"
 
 # I2P deinterlacing: converts interlaced analog source to progressive output.
-# Strongly recommended for capture quality. Disable only if you need raw fields.
+# Strongly recommended for capture quality.
+#
+# Frame rate effect: the ADV7280 I2P outputs one progressive frame per analog
+# field (not per field-pair), which doubles the output rate:
+#   PAL:  25 fps source  ->  50 fps capture
+#   NTSC: ~30 fps source -> ~60 fps capture  (59.94 fields/s -> ~59.94 fps)
+# The GStreamer caps and AVI container header must match this doubled rate
+# (framerate=50/1 for PAL, 60000/1001 for NTSC) or playback will be at the
+# wrong speed. See the framerate setting in capture.sh and recorder.py.
+#
+# To capture at the native frame rate (25 fps PAL / ~30 fps NTSC):
+#   Set ENABLE_I2P = False below, then change the framerate in capture.sh and
+#   recorder.py to 25/1 (PAL) or 30000/1001 (NTSC).
+#   Output will be interlaced (V4L2_FIELD_ALTERNATE) and will require software
+#   deinterlacing in post-production.
 ENABLE_I2P = True
 
 # AGC (Automatic Gain Control): normalises gain across scenes.
@@ -65,7 +83,7 @@ ENABLE_AGC = True
 # Composite CVBS signals typically need 2x to reach proper luma levels.
 # If the image is too bright, reduce toward 0x80. If AGC is disabled, this
 # is the primary brightness control.
-CONTRAST_GAIN = 0xFF
+CONTRAST_GAIN = 0x80
 
 # --- Settings left at default (documented for reference) ---
 #

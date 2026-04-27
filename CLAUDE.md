@@ -43,7 +43,7 @@ The camera is PAL composite. The ADV7280 with I2P deinterlacing outputs:
 
 The Pi Zero 2W cannot encode H264 in real-time from this source. The bottleneck is
 software color space conversion: UYVY422 -> YUV420p (required by `h264_v4l2m2m`) maxes
-out at ~23fps on a 1GHz Cortex-A53, below the 25fps input rate.
+out at ~23fps on a 1GHz Cortex-A53, well below the 50fps (PAL) input rate with I2P.
 
 The hardware JPEG encoder (`v4l2jpegenc`) accepts UYVY directly, bypassing the color
 conversion entirely, and runs at ~45fps (well above real-time).
@@ -66,8 +66,12 @@ by `setup-pi.sh` / `make setup`.
 
 ### Key Video Dimensions
 
-- V4L2 output: `720x576` @ 25fps, UYVY422 (driver ignores any other size request)
-- Configured mode: PAL, progressive (I2P deinterlace ON in ADV7280)
+- V4L2 output: `720x576` @ **50fps** (PAL), UYVY422; NTSC: `720x507` @ **~60fps**
+- I2P deinterlacing doubles the frame rate: one progressive frame per field, not per field-pair
+  (PAL source 25fps → 50fps output; NTSC ~30fps → ~60fps output)
+- GStreamer caps and AVI/MP4 container headers must use the doubled rate (50/1 for PAL)
+- To capture at native 25fps (PAL) / ~30fps (NTSC): set ENABLE_I2P=False in setup-adv.py
+  and update framerate in capture.sh and recorder.py; output will be interlaced
 - Blanking: PAL active picture is full 720x576; vertical framing may have a ~20-row offset
   (bottom rows appearing at top) -- this is a known ADV7280 config issue, not yet resolved
 

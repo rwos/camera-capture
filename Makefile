@@ -1,7 +1,7 @@
 FILE ?= capture
 
 .PHONY: ssh upload setup stream recordings down transcode
-STREAM_CMD=gst-launch-1.0 -q -e v4l2src device=/dev/video0 ! 'video/x-raw,format=UYVY,width=720,height=576,framerate=25/1' ! v4l2jpegenc ! fdsink fd=1
+STREAM_CMD=gst-launch-1.0 -q -e v4l2src device=/dev/video0 ! 'video/x-raw,format=UYVY,width=720,height=576,framerate=50/1' ! v4l2jpegenc ! fdsink fd=1
 
 ssh:
 	sshpass -p "raspberry" ssh pi@camera.local
@@ -22,7 +22,7 @@ down:
 recordings:
 	mkdir -p recordings
 	sshpass -p "raspberry" rsync -ah --progress --ignore-existing pi@camera.local:/home/pi/recordings/ recordings/
-	sshpass -p "raspberry" ssh pi@camera.local "find /home/pi/recordings/ -type f \( -name '*.avi' -o -name '*.jpg' \) -delete"
+	sshpass -p "raspberry" ssh pi@camera.local "find /home/pi/recordings/ -type f -name '*.avi' -delete"
 	for f in recordings/*.avi; do \
 		[ -f "$$f" ] || continue; \
 		out="$${f%.avi}.mp4"; \
