@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Raspberry Pi video capture system for analog video (CVBS/S-Video) using the DVX-Nebula PCB, which is based on the [sdtv2csi](https://github.com/rniwase/sdtv2csi) design. The PCB uses an ADV7280 video decoder chip connected to the Pi via CSI. Primary use case is capturing/streaming from a Panasonic A2 camera (PAL composite).
+This is a Raspberry Pi video capture system for analog video (CVBS/S-Video) using the ADV7280 uHat Shield, which is based on the [sdtv2csi](https://github.com/rniwase/sdtv2csi) design. The PCB uses an ADV7280 video decoder chip connected to the Pi via CSI. Primary use case is capturing/streaming from a Panasonic A2 camera (PAL composite).
 
 Target hardware: Raspberry Pi Zero 2 W running Raspberry Pi OS Bookworm (Debian 12). The Pi is accessed over the network at `camera.local` (user: `pi`, password: `raspberry`).
 

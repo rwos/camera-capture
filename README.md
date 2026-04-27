@@ -5,7 +5,7 @@
 > Use with some skepticism.
 
 Capture analog video (composite CVBS or S-Video) at full quality on a Raspberry Pi Zero 2W,
-using the [DVX-Nebula ADV7280 uHAT](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield).
+using the [ADV7280 uHat Shield](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield).
 
 Available from [Ethermata on Tindie](https://www.tindie.com/products/ethermata/analog-video-capture-adv7280m-uhat-prototype/). Based on the [sdtv2csi](https://github.com/rniwase/sdtv2csi) project by rniwase.
 
@@ -14,7 +14,7 @@ Available from [Ethermata on Tindie](https://www.tindie.com/products/ethermata/a
 ## Hardware required
 
 - Raspberry Pi Zero 2W
-- DVX-Nebula ADV7280 uHAT ([Hackaday.io](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield))
+- ADV7280 uHat Shield ([Hackaday.io](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield))
 - SD card (Class 10 / A1 recommended -- captures run ~1.1 MB/s)
 - Analog video source (composite CVBS or S-Video)
 

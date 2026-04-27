@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ADV7280-M setup for DVX-Nebula / sdtv2csi hardware.
+ADV7280-M setup for ADV7280 uHat Shield / sdtv2csi hardware.
 
 The Linux adv7180 kernel driver (active at boot) already handles:
   - Chip reset and ADI-recommended quality writes (adv7182_init)

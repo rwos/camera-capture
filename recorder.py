@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Appliance-mode recorder for DVX-Nebula analog video capture hat.
+Appliance-mode recorder for ADV7280 uHat Shield analog video capture.
 
 Button 1 (GPIO 24, corner of board): start recording
 Button 2 (GPIO 23):                  stop recording (if recording); idle: no-op

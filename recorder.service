@@ -1,5 +1,5 @@
 [Unit]
-Description=Analog video recorder (DVX-Nebula)
+Description=Analog video recorder (ADV7280 uHat Shield)
 After=multi-user.target
 
 [Service]
