@@ -32,7 +32,7 @@ The ADV7280 chip converts the analog signal to a digital UYVY stream over MIPI C
 
 GStreamer captures from V4L2 and encodes using the Pi's **hardware JPEG encoder** (`v4l2jpegenc`), which accepts UYVY directly — no CPU-side colour conversion. This matters: the Pi Zero 2W can't do real-time H.264 because that requires a CPU-side colour space conversion that maxes out at ~23 fps on this hardware, well below the 50 fps input rate.
 
-With I2P deinterlacing enabled (the default), the ADV7280 outputs one progressive frame per *field* rather than per frame-pair, doubling the output rate: **50 fps for PAL, ~60 fps for NTSC**. Captures are saved as MJPEG AVI (~1.1 MB/s). `make recordings` syncs them to the Mac and transcodes to H.265 — Apple Silicon handles this well under real-time.
+With I2P deinterlacing enabled (the default), the ADV7280 outputs one progressive frame per *field* rather than per frame-pair, doubling the output rate: **50 fps for PAL, ~60 fps for NTSC**. Captures are saved as MJPEG AVI (~1.1 MB/s). `make recordings` syncs them to the Mac and transcodes to H.265.
 
 ---
 
