@@ -8,6 +8,8 @@ This is a Raspberry Pi video capture system for analog video (CVBS/S-Video) usin
 
 Target hardware: Raspberry Pi Zero 2 W running Raspberry Pi OS Bookworm (Debian 12). The Pi is accessed over the network at `camera.local` (user: `pi`, password: `raspberry`).
 
+**Goal:** The system should set up from a blank Raspberry Pi OS image with as few dependencies as possible. Avoid pulling in extra packages, Python libraries, or tooling beyond what is strictly necessary.
+
 ## Makefile Commands
 
 All commands run against the remote Pi via SSH/SCP using `sshpass`:
@@ -17,10 +19,11 @@ make ssh                    # Open SSH shell on the Pi
 make upload                 # Deploy scripts to /home/pi/
 make setup                  # Full Pi setup: install packages, CPU governor, configure ADV7280
 make stream                 # Live MJPEG preview via ffplay (low latency, for debugging)
+make recordings             # Sync recordings from Pi, transcode to H.265, delete from Pi
 ```
 
 Capture workflow:
-1. `make setup` (first time / after reboot to reconfigure ADV7280)
+1. `make setup` (once, on a fresh Pi)
 2. Use the hardware buttons to record; `make recordings` to sync and transcode
 
 ## Architecture
@@ -53,17 +56,17 @@ by `setup-pi.sh` / `make setup`.
 
 1. `setup-adv.py` -- Configures the ADV7280 chip over I2C (`/dev/i2c-10`, address `0x21`).
    Sets input to composite (COMP), PAL mode, enables I2P de-interlacing, enables AGC.
-   Must be run after each Pi boot.
+   Run automatically on boot by `recorder.service`.
 
 2. `recorder.py` -- Appliance-mode daemon (run by `recorder.service`). Polls two GPIO buttons:
    Button 1 starts recording, Button 2 stops. Blinks the ACT LED while recording.
 
-4. `setup-pi.sh` -- One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
+3. `setup-pi.sh` -- One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
    a systemd service for persistent CPU performance mode, then runs `setup-adv.py`.
 
 **Mac-side:**
 
-5. `stills-from-video <rate 1-50> <avi-file>` -- Extracts JPEG frames from an AVI at the
+4. `stills-from-video <rate 1-50> <avi-file>` -- Extracts JPEG frames from an AVI at the
    given rate (50 = every frame, 1 = one per second). Creates a directory named after the file.
 
 ### Key Video Dimensions
@@ -74,8 +77,6 @@ by `setup-pi.sh` / `make setup`.
 - GStreamer caps and AVI/MP4 container headers must use the doubled rate (50/1 for PAL)
 - To capture at native 25fps (PAL) / ~30fps (NTSC): set ENABLE_I2P=False in setup-adv.py
   and update framerate in recorder.py; output will be interlaced
-- Blanking: PAL active picture is full 720x576; vertical framing may have a ~20-row offset
-  (bottom rows appearing at top) -- this is a known ADV7280 config issue, not yet resolved
 
 ### Kernel Module
 
