@@ -1,4 +1,4 @@
-.PHONY: ssh upload initial-setup stream recordings
+.PHONY: ssh upload initial-setup settings-update stream recordings
 
 ssh:
 	sshpass -p "raspberry" ssh pi@camera.local
@@ -17,6 +17,11 @@ initial-setup: upload
 	sshpass -p "raspberry" ssh pi@camera.local "bash /home/pi/setup-pi.sh"
 	@echo "Rebooting Pi..."
 	-sshpass -p "raspberry" ssh pi@camera.local "sudo reboot"
+
+settings-update:
+	@echo "Uploading and applying setup-adv.py..."
+	sshpass -p "raspberry" scp setup-adv.py pi@camera.local:/home/pi/
+	sshpass -p "raspberry" ssh pi@camera.local "python3 /home/pi/setup-adv.py"
 
 stream:
 	sshpass -p "raspberry" ssh pi@camera.local "python3 /home/pi/recorder.py --stream" | ffplay -fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0 -f mjpeg -

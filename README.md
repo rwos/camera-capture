@@ -47,6 +47,11 @@ With I2P deinterlacing enabled (the default), the ADV7280 outputs one progressiv
 
 `setup-adv.py` has configurable options near the top: input source (CVBS/S-Video),
 signal standard, I2P deinterlacing, AGC, contrast, and adaptive contrast.
+After changing settings, upload and apply with:
+
+```bash
+make settings-update
+```
 
 ### Switching to NTSC
 

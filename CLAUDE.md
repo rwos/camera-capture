@@ -18,6 +18,7 @@ All commands run against the remote Pi via SSH/SCP using `sshpass`:
 make ssh                    # Open SSH shell on the Pi
 make upload                 # Deploy scripts to /home/pi/
 make initial-setup          # One-time Pi setup: config.txt, kernel module, packages, service
+make settings-update        # Upload and apply setup-adv.py after changing settings
 make stream                 # Live MJPEG preview via ffplay (low latency, for debugging)
 make recordings             # Sync recordings from Pi, transcode to H.265, delete from Pi
 ```
