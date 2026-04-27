@@ -7,7 +7,14 @@
 Capture analog video (composite CVBS or S-Video) at full quality on a Raspberry Pi Zero 2W,
 using the [ADV7280 uHat Shield](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield).
 
-Available from [Ethermata on Tindie](https://www.tindie.com/products/ethermata/analog-video-capture-adv7280m-uhat-prototype/). Hardware repo (geared towards the DVX100): [lerabot/dvx-nebula](https://github.com/lerabot/dvx-nebula). Based on the [sdtv2csi](https://github.com/rniwase/sdtv2csi) project by rniwase.
+Out of the box, this is set up to work with PAL video cameras (I have a couple
+old Newvicon cameras that I use this with), connected via composite. It should
+be flexible enough to also work with NTSC cameras, with a few changes, detailed
+below.
+
+* Hardware (was) available from [Ethermata on Tindie](https://www.tindie.com/products/ethermata/analog-video-capture-adv7280m-uhat-prototype/).
+* Hardware creator's repo (geared towards an NTSC camera, the Panaosonic DVX100): [lerabot/dvx-nebula](https://github.com/lerabot/dvx-nebula).
+* Hardware based on the [sdtv2csi](https://github.com/rniwase/sdtv2csi) project by rniwase, and kernel patch setup taken from there.
 
 ---
 
