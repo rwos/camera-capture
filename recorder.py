@@ -37,11 +37,12 @@ GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
 
 DEBOUNCE_S       = 0.05   # 50 ms button debounce
 POLL_S           = 0.02   # 20 ms polling interval
-BLINK_ON_S       = 0.5    # LED on duration while recording
-BLINK_OFF_S      = 0.5    # LED off duration while recording
-HEARTBEAT_S      = 2.0    # idle heartbeat interval
-HEARTBEAT_ON_S   = 0.1    # idle heartbeat blink duration
-STARTUP_BLINKS   = 3      # number of blinks on startup
+BLINK_ON_S          = 0.5    # LED on duration while recording
+BLINK_OFF_S         = 0.5    # LED off duration while recording
+HEARTBEAT_S         = 2.5    # pause between idle double-blinks
+HEARTBEAT_BLINK_S   = 0.08   # each pulse in the idle double-blink
+HEARTBEAT_GAP_S     = 0.12   # gap between the two pulses
+STARTUP_BLINKS      = 3      # number of blinks on startup
 
 
 def gst_record_cmd(path):
@@ -166,9 +167,9 @@ class Recorder:
                 self._check_recording_alive()
 
                 if self.proc is None and now >= next_heartbeat:
-                    self._led(True)
-                    time.sleep(HEARTBEAT_ON_S)
-                    self._led(False)
+                    self._led(True);  time.sleep(HEARTBEAT_BLINK_S); self._led(False)
+                    time.sleep(HEARTBEAT_GAP_S)
+                    self._led(True);  time.sleep(HEARTBEAT_BLINK_S); self._led(False)
                     next_heartbeat = now + HEARTBEAT_S
 
                 time.sleep(POLL_S)

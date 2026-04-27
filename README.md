@@ -87,7 +87,7 @@ This patches `config.txt`, builds and installs the patched `adv7180` kernel modu
 
 After `make setup` the Pi runs `recorder.service` automatically on every boot.
 Wait for the ACT LED to do 3 quick blinks -- that means the recorder is ready.
-While idle the LED pulses briefly every 2 seconds.
+While idle the LED does a quick double-blink every 2.5 seconds.
 
 | Button | Idle | Recording |
 |--------|------|-----------|
