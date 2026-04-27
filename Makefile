@@ -1,35 +1,43 @@
+PI_HOST = camera.local
+PI_USER = pi
+PI_PASS = raspberry
+
+SSH  = sshpass -p "$(PI_PASS)" ssh  $(PI_USER)@$(PI_HOST)
+SCP  = sshpass -p "$(PI_PASS)" scp
+RSYNC = sshpass -p "$(PI_PASS)" rsync
+
 .PHONY: ssh upload initial-setup settings-update stream recordings
 
 ssh:
-	sshpass -p "raspberry" ssh pi@camera.local
+	$(SSH)
 
 upload:
 	@echo "Uploading scripts..."
-	sshpass -p "raspberry" scp setup-adv.py setup-pi.sh install_patch.sh recorder.py recorder.service pi@camera.local:/home/pi/
+	$(SCP) setup-adv.py setup-pi.sh install_patch.sh recorder.py recorder.service $(PI_USER)@$(PI_HOST):/home/pi/
 
 initial-setup: upload
 	@echo "Patching /boot/firmware/config.txt..."
-	sshpass -p "raspberry" ssh pi@camera.local "grep -qxF 'dtoverlay=adv728x-m,adv7280m=1' /boot/firmware/config.txt || sudo bash -c 'echo dtoverlay=adv728x-m,adv7280m=1 >> /boot/firmware/config.txt'"
-	sshpass -p "raspberry" ssh pi@camera.local "grep -qxF 'gpu_mem=128' /boot/firmware/config.txt || sudo bash -c 'echo gpu_mem=128 >> /boot/firmware/config.txt'"
+	$(SSH) "grep -qxF 'dtoverlay=adv728x-m,adv7280m=1' /boot/firmware/config.txt || sudo bash -c 'echo dtoverlay=adv728x-m,adv7280m=1 >> /boot/firmware/config.txt'"
+	$(SSH) "grep -qxF 'gpu_mem=128' /boot/firmware/config.txt || sudo bash -c 'echo gpu_mem=128 >> /boot/firmware/config.txt'"
 	@echo "Building and installing patched adv7180 kernel module (takes a few minutes)..."
-	sshpass -p "raspberry" ssh pi@camera.local "sudo bash /home/pi/install_patch.sh"
+	$(SSH) "sudo bash /home/pi/install_patch.sh"
 	@echo "Installing packages and setting up recorder service..."
-	sshpass -p "raspberry" ssh pi@camera.local "bash /home/pi/setup-pi.sh"
+	$(SSH) "bash /home/pi/setup-pi.sh"
 	@echo "Rebooting Pi..."
-	-sshpass -p "raspberry" ssh pi@camera.local "sudo reboot"
+	-$(SSH) "sudo reboot"
 
 settings-update:
 	@echo "Uploading and applying setup-adv.py..."
-	sshpass -p "raspberry" scp setup-adv.py pi@camera.local:/home/pi/
-	sshpass -p "raspberry" ssh pi@camera.local "python3 /home/pi/setup-adv.py"
+	$(SCP) setup-adv.py $(PI_USER)@$(PI_HOST):/home/pi/
+	$(SSH) "python3 /home/pi/setup-adv.py"
 
 stream:
-	sshpass -p "raspberry" ssh pi@camera.local "python3 /home/pi/recorder.py --stream" | ffplay -fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0 -f mjpeg -
+	$(SSH) "python3 /home/pi/recorder.py --stream" | ffplay -fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0 -f mjpeg -
 
 recordings:
 	mkdir -p recordings
-	sshpass -p "raspberry" rsync -ah --progress --ignore-existing pi@camera.local:/home/pi/recordings/ recordings/
-	sshpass -p "raspberry" ssh pi@camera.local "find /home/pi/recordings/ -type f -name '*.avi' -delete"
+	$(RSYNC) -ah --progress --ignore-existing $(PI_USER)@$(PI_HOST):/home/pi/recordings/ recordings/
+	$(SSH) "find /home/pi/recordings/ -type f -name '*.avi' -delete"
 	for f in recordings/*.avi; do \
 		[ -f "$$f" ] || continue; \
 		out="$${f%.avi}.mp4"; \
