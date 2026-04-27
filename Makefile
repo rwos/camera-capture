@@ -6,7 +6,7 @@ SSH  = sshpass -p "$(PI_PASS)" ssh  $(PI_USER)@$(PI_HOST)
 SCP  = sshpass -p "$(PI_PASS)" scp
 RSYNC = sshpass -p "$(PI_PASS)" rsync
 
-.PHONY: ssh upload initial-setup settings-update stream recordings
+.PHONY: ssh upload setup initial-setup settings-update stream recordings
 
 ssh:
 	$(SSH)
@@ -15,20 +15,20 @@ upload:
 	@echo "Uploading scripts..."
 	$(SCP) setup-adv.py setup-pi.sh install_patch.sh recorder.py recorder.service $(PI_USER)@$(PI_HOST):/home/pi/
 
-initial-setup: upload
+setup: upload
+	@echo "Installing packages and setting up recorder service..."
+	$(SSH) "bash /home/pi/setup-pi.sh"
+
+initial-setup: setup
 	@echo "Patching /boot/firmware/config.txt..."
 	$(SSH) "grep -qxF 'dtoverlay=adv728x-m,adv7280m=1' /boot/firmware/config.txt || sudo bash -c 'echo dtoverlay=adv728x-m,adv7280m=1 >> /boot/firmware/config.txt'"
 	$(SSH) "grep -qxF 'gpu_mem=128' /boot/firmware/config.txt || sudo bash -c 'echo gpu_mem=128 >> /boot/firmware/config.txt'"
 	@echo "Building and installing patched adv7180 kernel module (takes a few minutes)..."
 	$(SSH) "sudo bash /home/pi/install_patch.sh"
-	@echo "Installing packages and setting up recorder service..."
-	$(SSH) "bash /home/pi/setup-pi.sh"
 	@echo "Rebooting Pi..."
 	-$(SSH) "sudo reboot"
 
-settings-update:
-	@echo "Uploading and applying setup-adv.py..."
-	$(SCP) setup-adv.py $(PI_USER)@$(PI_HOST):/home/pi/
+settings-update: upload
 	$(SSH) "python3 /home/pi/setup-adv.py"
 
 stream:

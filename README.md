@@ -80,7 +80,13 @@ And update `GST_CAPS` in `recorder.py`:
 make initial-setup
 ```
 
-This patches `config.txt`, builds and installs the patched `adv7180` kernel module (takes a few minutes), then runs the full setup. The Pi reboots at the end; the recorder service starts automatically on every subsequent boot.
+Uploads scripts, installs packages, patches `config.txt`, builds and installs the patched `adv7180` kernel module (takes a few minutes), and reboots. The recorder service starts automatically on every subsequent boot.
+
+To re-apply after changing `recorder.py` or other scripts (without rebuilding the kernel module):
+
+```bash
+make setup
+```
 
 ---
 

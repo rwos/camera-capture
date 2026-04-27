@@ -17,14 +17,15 @@ All commands run against the remote Pi via SSH/SCP using `sshpass`:
 ```bash
 make ssh                    # Open SSH shell on the Pi
 make upload                 # Deploy scripts to /home/pi/
-make initial-setup          # One-time Pi setup: config.txt, kernel module, packages, service
+make setup                  # Upload scripts and re-run setup-pi.sh (use after changing recorder.py etc.)
+make initial-setup          # One-time Pi setup: setup + config.txt + kernel module + reboot
 make settings-update        # Upload and apply setup-adv.py after changing settings
 make stream                 # Live MJPEG preview via ffplay (low latency, for debugging)
 make recordings             # Sync recordings from Pi, transcode to H.265, delete from Pi
 ```
 
 Capture workflow:
-1. `make setup` (once, on a fresh Pi)
+1. `make initial-setup` (once, on a fresh Pi)
 2. Use the hardware buttons to record; `make recordings` to sync and transcode
 
 ## Architecture
@@ -94,11 +95,7 @@ gpu_mem=128
 ## Pi Setup (one-time)
 
 ```bash
-# install_patch.sh is included in this repo; upload it first with: make upload
-sudo bash install_patch.sh
-sudo bash -c 'echo "dtoverlay=adv728x-m,adv7280m=1" >> /boot/firmware/config.txt'
-sudo bash -c 'echo "gpu_mem=128" >> /boot/firmware/config.txt'
-sudo reboot
-# After reboot:
-make setup
+make initial-setup
 ```
+
+Uploads scripts, installs packages, patches `config.txt`, builds and installs the patched `adv7180` kernel module, and reboots.
