@@ -58,9 +58,8 @@ And in `recorder.py`, the GStreamer caps line:
 ```bash
 "video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
 #                                        ^^^              ^^
-#                         PAL=576, NTSC=507*    with I2P: PAL=50, NTSC=60000/1001 (~60)
+#                         PAL=576, NTSC=507     with I2P: PAL=50, NTSC=60000/1001 (~60)
 #                                               no I2P:   PAL=25/1, NTSC=30000/1001
-# * NTSC=507 requires the patched adv7180 kernel module (install_patch.sh)
 ```
 
 The framerate is doubled by I2P deinterlacing (one frame per field). If you disable
