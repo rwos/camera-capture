@@ -17,7 +17,7 @@ All commands run against the remote Pi via SSH/SCP using `sshpass`:
 ```bash
 make ssh                    # Open SSH shell on the Pi
 make upload                 # Deploy scripts to /home/pi/
-make setup                  # Full Pi setup: install packages, CPU governor, configure ADV7280
+make initial-setup          # One-time Pi setup: config.txt, kernel module, packages, service
 make stream                 # Live MJPEG preview via ffplay (low latency, for debugging)
 make recordings             # Sync recordings from Pi, transcode to H.265, delete from Pi
 ```

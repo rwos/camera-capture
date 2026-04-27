@@ -1,14 +1,22 @@
-.PHONY: ssh upload setup stream recordings
+.PHONY: ssh upload initial-setup stream recordings
 STREAM_CMD=gst-launch-1.0 -q -e v4l2src device=/dev/video0 ! 'video/x-raw,format=UYVY,width=720,height=576,framerate=50/1' ! v4l2jpegenc ! fdsink fd=1
 
 ssh:
 	sshpass -p "raspberry" ssh pi@camera.local
 
 upload:
+	@echo "Uploading scripts..."
 	sshpass -p "raspberry" scp setup-adv.py setup-pi.sh install_patch.sh recorder.py recorder.service pi@camera.local:/home/pi/
 
-setup: upload
+initial-setup: upload
+	@echo "Patching /boot/firmware/config.txt..."
+	sshpass -p "raspberry" ssh pi@camera.local "sudo sed -i '/^dtoverlay=adv728x/d' /boot/firmware/config.txt && sudo bash -c 'echo dtoverlay=adv728x-m,adv7280m=1 >> /boot/firmware/config.txt'"
+	sshpass -p "raspberry" ssh pi@camera.local "sudo sed -i '/^gpu_mem=/d' /boot/firmware/config.txt && sudo bash -c 'echo gpu_mem=128 >> /boot/firmware/config.txt'"
+	@echo "Building and installing patched adv7180 kernel module (takes a few minutes)..."
+	sshpass -p "raspberry" ssh pi@camera.local "sudo bash /home/pi/install_patch.sh"
+	@echo "Installing packages and setting up recorder service..."
 	sshpass -p "raspberry" ssh pi@camera.local "bash /home/pi/setup-pi.sh"
+	@echo "Rebooting Pi..."
 	-sshpass -p "raspberry" ssh pi@camera.local "sudo reboot"
 
 stream:

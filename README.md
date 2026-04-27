@@ -70,65 +70,14 @@ rate: `25/1` for PAL, `30000/1001` for NTSC.
 
 ## Initial setup (once)
 
-Do this once, from your Mac/PC:
-
-### 1. Flash Raspberry Pi OS Bookworm (64-bit Lite) to the SD card
-
-Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/). In the "Edit Settings" dialog,
-configure SSH, your network credentials, and the hostname (set it to `camera` to get
-`camera.local` on the network). The `.local` resolution is handled automatically by
-Avahi, which ships with Raspberry Pi OS.
-
-### 2. Boot the Pi and set config.txt
-
-SSH in and add to `/boot/firmware/config.txt`:
-
-```
-dtoverlay=adv728x-m,adv7280m=1
-gpu_mem=128
-```
+1. Flash **Raspberry Pi OS Bookworm (64-bit Lite)** with [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Set hostname to `camera`, enable SSH, configure Wi-Fi.
+2. Boot the Pi, then from your Mac/PC (requires `sshpass` and `ffmpeg` -- `brew install sshpass ffmpeg`):
 
 ```bash
-sudo bash -c 'echo "dtoverlay=adv728x-m,adv7280m=1" >> /boot/firmware/config.txt'
-sudo bash -c 'echo "gpu_mem=128" >> /boot/firmware/config.txt'
+make initial-setup
 ```
 
-### 3. Upload scripts to the Pi
-
-From your Mac/PC (requires `sshpass` -- `brew install sshpass`; `make stream` also requires `ffplay` -- `brew install ffmpeg`):
-
-```bash
-make upload
-```
-
-### 4. Install the patched kernel module
-
-The stock `adv7180` kernel driver reports the wrong frame height with I2P deinterlacing
-enabled. `install_patch.sh` (included in this repo) builds and installs a corrected
-version matched to your running kernel:
-
-```bash
-# SSH into the Pi first (make ssh), then:
-sudo bash install_patch.sh
-```
-
-This takes several minutes -- it downloads the kernel source and compiles the module.
-
-### 5. Reboot
-
-```bash
-sudo reboot
-```
-
-### 6. Run the main setup
-
-```bash
-make setup
-```
-
-This uploads scripts to the Pi, installs GStreamer and the recorder service, and sets
-the CPU governor to `performance` mode (persistent across reboots). The Pi reboots
-automatically; the recorder service then starts on boot and configures the ADV7280.
+This patches `config.txt`, builds and installs the patched `adv7180` kernel module (takes a few minutes), then runs the full setup. The Pi reboots at the end; the recorder service starts automatically on every subsequent boot.
 
 ---
 
