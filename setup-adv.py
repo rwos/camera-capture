@@ -22,7 +22,7 @@ Line count / framing note (sdtv2csi issue #1, github.com/rniwase/sdtv2csi):
   active picture. For NTSC: 507 lines total (480 active + 27 blanking).
   The kernel driver must be patched to expect 507 lines (see install_patch.sh).
   For PAL: likely similar (>576 lines), causing the vertical framing offset bug
-  where bottom N lines appear at the top. The active line count in capture.sh
+  where bottom N lines appear at the top. The active line count in recorder.py
   must match the standard: 720x507 for NTSC, 720x576 for PAL (plus blanking
   offset crop if needed). See Table 72 of ADI UG-1176 for exact line counts.
 
@@ -66,11 +66,11 @@ STANDARD = "PAL"
 #   NTSC: ~30 fps source -> ~60 fps capture  (59.94 fields/s -> ~59.94 fps)
 # The GStreamer caps and AVI container header must match this doubled rate
 # (framerate=50/1 for PAL, 60000/1001 for NTSC) or playback will be at the
-# wrong speed. See the framerate setting in capture.sh and recorder.py.
+# wrong speed. See the framerate setting in recorder.py.
 #
 # To capture at the native frame rate (25 fps PAL / ~30 fps NTSC):
-#   Set ENABLE_I2P = False below, then change the framerate in capture.sh and
-#   recorder.py to 25/1 (PAL) or 30000/1001 (NTSC).
+#   Set ENABLE_I2P = False below, then change the framerate in recorder.py
+#   to 25/1 (PAL) or 30000/1001 (NTSC).
 #   Output will be interlaced (V4L2_FIELD_ALTERNATE) and will require software
 #   deinterlacing in post-production.
 ENABLE_I2P = True

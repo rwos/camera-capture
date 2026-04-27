@@ -1,0 +1,7 @@
+recordings/
+video_*/
+*.avi
+*.mp4
+TODO
+REVIEW_INSTRUCTIONS
+.claude/

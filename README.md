@@ -46,7 +46,7 @@ In `setup-adv.py`, near the top:
 STANDARD = "PAL"   # "PAL" for European/50Hz cameras, "NTSC" for USA/Japan/60Hz
 ```
 
-And in `capture.sh` (and `recorder.py`), the GStreamer caps line:
+And in `recorder.py`, the GStreamer caps line:
 
 ```bash
 "video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
@@ -159,20 +159,6 @@ stills-from-video 1  video_20261015_143022.avi   # one frame per second
 stills-from-video 10 video_20261015_143022.avi   # 10 frames per second
 stills-from-video 50 video_20261015_143022.avi   # every frame (50fps source)
 # -> video_20261015_143022/frame_000001.jpg ...
-```
-
-### Manual capture (via SSH)
-
-```bash
-# SSH into the Pi:
-make ssh
-bash capture.sh my-clip
-# -> saves /home/pi/my-clip.avi
-
-# On Mac/PC: download and transcode
-make down FILE=my-clip
-make transcode FILE=my-clip       # -> my-clip.mp4      (H.264, normal speed)
-make transcode-slow FILE=my-clip  # -> my-clip_slow.mp4 (H.264, half speed)
 ```
 
 ---

@@ -17,16 +17,11 @@ make ssh                    # Open SSH shell on the Pi
 make upload                 # Deploy scripts to /home/pi/
 make setup                  # Full Pi setup: install packages, CPU governor, configure ADV7280
 make stream                 # Live MJPEG preview via ffplay (low latency, for debugging)
-make down [FILE=basename]   # Download captured AVI from Pi (default: capture.avi)
-make transcode [FILE=basename]       # Convert AVI -> H264 MP4 on Mac (default: capture)
-make transcode-slow [FILE=basename]  # Same but half-speed: all frames played at 25fps
 ```
 
 Capture workflow:
 1. `make setup` (first time / after reboot to reconfigure ADV7280)
-2. SSH to Pi and run: `bash capture.sh <basename>` (records to `/home/pi/<basename>.avi`)
-3. `make down FILE=<basename>` to download
-4. `make transcode FILE=<basename>` to convert to H264 MP4
+2. Use the hardware buttons to record; `make recordings` to sync and transcode
 
 ## Architecture
 
@@ -60,11 +55,7 @@ by `setup-pi.sh` / `make setup`.
    Sets input to composite (COMP), PAL mode, enables I2P de-interlacing, enables AGC.
    Must be run after each Pi boot.
 
-2. `capture.sh` -- Runs on the Pi. Records UYVY video using GStreamer + hardware JPEG encoder
-   (`v4l2jpegenc`) to an MJPEG AVI file. No color conversion, no frame drops. Usage:
-   `bash capture.sh <basename>` -> saves `/home/pi/<basename>.avi`.
-
-3. `recorder.py` -- Appliance-mode daemon (run by `recorder.service`). Polls two GPIO buttons:
+2. `recorder.py` -- Appliance-mode daemon (run by `recorder.service`). Polls two GPIO buttons:
    Button 1 starts recording, Button 2 stops. Blinks the ACT LED while recording.
 
 4. `setup-pi.sh` -- One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
@@ -82,18 +73,9 @@ by `setup-pi.sh` / `make setup`.
   (PAL source 25fps → 50fps output; NTSC ~30fps → ~60fps output)
 - GStreamer caps and AVI/MP4 container headers must use the doubled rate (50/1 for PAL)
 - To capture at native 25fps (PAL) / ~30fps (NTSC): set ENABLE_I2P=False in setup-adv.py
-  and update framerate in capture.sh and recorder.py; output will be interlaced
+  and update framerate in recorder.py; output will be interlaced
 - Blanking: PAL active picture is full 720x576; vertical framing may have a ~20-row offset
   (bottom rows appearing at top) -- this is a known ADV7280 config issue, not yet resolved
-
-### Mac-side Transcode
-
-After `make down`, convert MJPEG AVI to H264 MP4 with `make transcode`:
-```bash
-ffmpeg -i capture.avi -c:v libx264 -preset fast -crf 20 -movflags +faststart capture.mp4
-```
-Mac handles this trivially fast (Apple Silicon). File sizes: MJPEG ~1.1MB/s (~66MB/min),
-H264 ~0.5MB/s depending on scene complexity.
 
 ### Kernel Module
 
