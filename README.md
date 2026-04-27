@@ -1,9 +1,8 @@
 # Raspberry Pi Analog Video Capture
 
-> **Warning:** This project is vibe-coded entirely with AI assistance. It seems to work
-> for me, but explanations, comments, and technical details — especially around the
-> ADV7280 register configuration and GStreamer pipeline — may be partially or completely
-> wrong. Use with appropriate scepticism.
+> **WARNING:** this is entirely vibe-coded. It works for me, but it may set your computer
+> and camera on fire. Everything in here (especially comments) might be totally wrong.
+> Use with some skepticism.
 
 Capture analog video (composite CVBS or S-Video) at full quality on a Raspberry Pi Zero 2W,
 using the [DVX-Nebula ADV7280 uHAT](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield).
@@ -26,25 +25,14 @@ The hat connects via the 40-pin GPIO header and routes video through the CSI rib
 ## How it works
 
 ```
-Analog video -> ADV7280 decoder (I2C config) -> CSI -> /dev/video0 (V4L2, UYVY422) -> GStreamer -> MJPEG AVI
+Analog video → ADV7280 → CSI → V4L2 (/dev/video0) → GStreamer → MJPEG AVI
 ```
 
-The ADV7280 converts analog video to a digital UYVY stream over MIPI CSI-2. A patched
-`adv7180` kernel module tells the driver the correct frame dimensions. GStreamer captures
-from V4L2 and encodes using the Pi's hardware JPEG encoder (`v4l2jpegenc`), which accepts
-UYVY directly -- no CPU-side colour conversion needed. This is the only pipeline that
-runs without frame drops on the Pi Zero 2W.
+The ADV7280 chip converts the analog signal to a digital UYVY stream over MIPI CSI-2. A patched `adv7180` kernel module tells the driver the correct frame dimensions.
 
-**Frame rate:** with I2P deinterlacing enabled (the default), the ADV7280 outputs one
-progressive frame per analog *field* rather than per frame-pair. This doubles the output
-rate relative to the source: PAL captures at **50 fps**, NTSC at **~60 fps** (59.94).
-To capture at the native source rate (25 fps PAL / ~30 fps NTSC) as interlaced video,
-set `ENABLE_I2P = False` in `setup-adv.py` and update the `framerate` in `capture.sh`
-and `recorder.py` to match (see comments in those files).
+GStreamer captures from V4L2 and encodes using the Pi's **hardware JPEG encoder** (`v4l2jpegenc`), which accepts UYVY directly — no CPU-side colour conversion. This matters: the Pi Zero 2W can't do real-time H.264 because that requires a CPU-side colour space conversion that maxes out at ~23 fps on this hardware, well below the 50 fps input rate.
 
-Captures are saved as MJPEG AVI (~1.1 MB/s) to the Pi's SD card. `make recordings`
-syncs them to the Mac and transcodes to H.265 MP4 -- Apple Silicon handles this in
-well under real-time.
+With I2P deinterlacing enabled (the default), the ADV7280 outputs one progressive frame per *field* rather than per frame-pair, doubling the output rate: **50 fps for PAL, ~60 fps for NTSC**. Captures are saved as MJPEG AVI (~1.1 MB/s). `make recordings` syncs them to the Mac and transcodes to H.265 — Apple Silicon handles this well under real-time.
 
 ---
 
@@ -71,9 +59,6 @@ And in `capture.sh` (and `recorder.py`), the GStreamer caps line:
 The framerate is doubled by I2P deinterlacing (one frame per field). If you disable
 `ENABLE_I2P` in `setup-adv.py`, change the framerate here to match the native source
 rate: `25/1` for PAL, `30000/1001` for NTSC.
-
-Input type (composite vs S-Video) is set by the device tree overlay and matches the
-physical connector you plug into. See the DVX-Nebula documentation for wiring.
 
 ---
 
@@ -139,19 +124,6 @@ automatically; the recorder service then starts on boot and configures the ADV72
 
 ---
 
-## Per-boot setup
-
-`setup-adv.py` must run after every boot to configure the ADV7280 chip (the kernel
-driver does not apply all required settings at probe time). The `recorder.service`
-installed by `make setup` runs it automatically on boot via `ExecStartPre`. To run
-it manually:
-
-```bash
-python3 setup-adv.py
-```
-
----
-
 ## Capturing video
 
 ### Appliance mode (normal use)
@@ -214,42 +186,3 @@ make stream
 ```
 
 Low latency (~1 frame). Useful for checking framing and signal lock before capturing.
-
----
-
-## Command reference
-
-`make` targets all run against the Pi over SSH (requires `sshpass`).
-Default Pi address is `camera.local`; edit the Makefile if yours differs.
-
-| Command | What it does |
-|---------|-------------|
-| `make ssh` | Open an interactive SSH shell on the Pi |
-| `make upload` | Copy scripts to `/home/pi/` on the Pi |
-| `make setup` | Upload + install packages + recorder service; reboots Pi |
-| `make stream` | Live MJPEG preview via ffplay |
-| `make recordings` | Sync `/home/pi/recordings/` to Mac, delete from Pi, transcode to H.265 (normal + half-speed) |
-| `make down [FILE=name]` | Download `name.avi` from Pi (default: `capture`) |
-| `make transcode [FILE=name]` | Convert `name.avi` -> `name.mp4` (H.264) on Mac |
-| `make transcode-slow [FILE=name]` | Same but half-speed: all 50fps frames played at 25fps |
-| `stills-from-video <rate> <file>` | Extract JPEG stills from AVI at rate 1–50 fps |
-
----
-
-## Troubleshooting
-
-**No signal / black screen**
-- Run `python3 setup-adv.py` -- it prints signal lock status. Look for `LOCKED`.
-- Check that `STANDARD` in `setup-adv.py` matches your camera (PAL vs NTSC).
-- Verify the dtoverlay line is in `/boot/firmware/config.txt` and the Pi has rebooted since.
-
-**Vertical framing offset (image rolls or bottom rows appear at top)**
-- Known issue with the ADV7280 and I2P deinterlacing. See `setup-adv.py` comments for details.
-- The kernel module patch (`install_patch.sh`) is required.
-
-**Frame drops during capture**
-- Ensure the CPU governor is set to `performance`: `cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
-- Re-run `make setup` to restore it.
-
-**`make setup` fails with "sshpass not found"**
-- `brew install sshpass` on Mac.
