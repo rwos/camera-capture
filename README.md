@@ -178,8 +178,8 @@ make recordings
 ### Extracting stills from a recording
 
 `stills-from-video` (included) extracts JPEG frames from an AVI at a chosen rate.
-It creates a directory named after the file and saves frames as `frame_000001.jpg`, etc.
-JPEG quality is set to maximum (`-q:v 1`). Runs on the Mac/PC; requires `ffmpeg`.
+Creates a directory named after the file; frames saved as `frame_000001.jpg`, etc.
+Maximum JPEG quality (`-q:v 1`). Runs on Mac/PC; requires `ffmpeg`.
 
 ```bash
 stills-from-video 1  video_20261015_143022.avi   # one frame per second
@@ -187,10 +187,6 @@ stills-from-video 10 video_20261015_143022.avi   # 10 frames per second
 stills-from-video 50 video_20261015_143022.avi   # every frame (50fps source)
 # -> video_20261015_143022/frame_000001.jpg ...
 ```
-
-Rate 1–50: 50 extracts all frames, 1 extracts one frame per second of footage.
-
----
 
 ### Manual capture (via SSH)
 
@@ -220,13 +216,13 @@ Low latency (~1 frame). Useful for checking framing and signal lock before captu
 
 ---
 
-## Makefile reference
+## Command reference
 
-All `make` targets run against the Pi over SSH (requires `sshpass` on the Mac/PC).
+`make` targets all run against the Pi over SSH (requires `sshpass`).
 Default Pi address is `camera.local`; edit the Makefile if yours differs.
 
-| Target | What it does |
-|--------|-------------|
+| Command | What it does |
+|---------|-------------|
 | `make ssh` | Open an interactive SSH shell on the Pi |
 | `make upload` | Copy scripts to `/home/pi/` on the Pi |
 | `make setup` | Upload + install packages + recorder service; reboots Pi |

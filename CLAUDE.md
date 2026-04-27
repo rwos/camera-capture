@@ -21,12 +21,6 @@ make down [FILE=basename]   # Download captured AVI from Pi (default: capture.av
 make transcode [FILE=basename]  # Convert AVI -> H264 MP4 on Mac (default: capture)
 ```
 
-Mac-side utilities (not deployed to Pi):
-
-```bash
-stills-from-video <rate 1-50> <avi-file>   # Extract JPEG stills; creates dir named after file
-```
-
 Capture workflow:
 1. `make setup` (first time / after reboot to reconfigure ADV7280)
 2. SSH to Pi and run: `bash capture.sh <basename>` (records to `/home/pi/<basename>.avi`)
@@ -43,7 +37,7 @@ Analog video -> ADV7280 (I2C config) -> CSI -> /dev/video0 (V4L2, UYVY422) -> GS
 
 The camera is PAL composite. The ADV7280 with I2P deinterlacing outputs:
 - Format: UYVY 4:2:2 (packed)
-- Resolution: 720x576 @ 25fps
+- Resolution: 720x576 @ 50fps (PAL); 720x507 @ ~60fps (NTSC)
 
 ### Why GStreamer + MJPEG (not FFmpeg + H264)
 
@@ -52,12 +46,14 @@ software color space conversion: UYVY422 -> YUV420p (required by `h264_v4l2m2m`)
 out at ~23fps on a 1GHz Cortex-A53, well below the 50fps (PAL) input rate with I2P.
 
 The hardware JPEG encoder (`v4l2jpegenc`) accepts UYVY directly, bypassing the color
-conversion entirely, and runs at ~45fps (well above real-time).
+conversion entirely, and keeps up with the 50fps (PAL) input rate in practice.
 
 CPU governor is set to `performance` (1GHz) persistently via systemd -- this is handled
 by `setup-pi.sh` / `make setup`.
 
 ### Scripts
+
+**Pi-side:**
 
 1. `setup-adv.py` -- Configures the ADV7280 chip over I2C (`/dev/i2c-10`, address `0x21`).
    Sets input to composite (COMP), PAL mode, enables I2P de-interlacing, enables AGC.
@@ -67,8 +63,16 @@ by `setup-pi.sh` / `make setup`.
    (`v4l2jpegenc`) to an MJPEG AVI file. No color conversion, no frame drops. Usage:
    `bash capture.sh <basename>` -> saves `/home/pi/<basename>.avi`.
 
-3. `setup-pi.sh` -- One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
+3. `recorder.py` -- Appliance-mode daemon (run by `recorder.service`). Polls two GPIO buttons:
+   Button 1 starts recording, Button 2 stops. Blinks the ACT LED while recording.
+
+4. `setup-pi.sh` -- One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
    a systemd service for persistent CPU performance mode, then runs `setup-adv.py`.
+
+**Mac-side:**
+
+5. `stills-from-video <rate 1-50> <avi-file>` -- Extracts JPEG frames from an AVI at the
+   given rate (50 = every frame, 1 = one per second). Creates a directory named after the file.
 
 ### Key Video Dimensions
 
@@ -105,7 +109,7 @@ gpu_mem=128
 ## Pi Setup (one-time)
 
 ```bash
-wget https://github.com/rniwase/sdtv2csi/raw/master/rpi/install_patch.sh
+# install_patch.sh is included in this repo; upload it first with: make upload
 sudo bash install_patch.sh
 sudo bash -c 'echo "dtoverlay=adv728x-m,adv7280m=1" >> /boot/firmware/config.txt'
 sudo bash -c 'echo "gpu_mem=128" >> /boot/firmware/config.txt'

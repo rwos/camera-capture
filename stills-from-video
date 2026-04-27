@@ -22,8 +22,8 @@ fi
 
 [ -f "$avi" ] || { echo "stills-from-video: not found: $avi" >&2; exit 1; }
 
-base="${avi##*/}"        # strip directory
-outdir="${base%.*}"      # strip extension
+base="${avi##*/}"
+outdir="${base%.*}"
 
 mkdir -p "$outdir"
 echo "Extracting at ${rate}fps -> $outdir/"
