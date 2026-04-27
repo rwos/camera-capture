@@ -45,26 +45,24 @@ With I2P deinterlacing enabled (the default), the ADV7280 outputs one progressiv
 
 ## Camera-specific settings
 
-**These are the only values you need to change for a different camera:**
+`setup-adv.py` has configurable options near the top: input source (CVBS/S-Video),
+signal standard, I2P deinterlacing, AGC, contrast, and adaptive contrast.
 
-In `setup-adv.py`, near the top:
+### Switching to NTSC
+
+In `setup-adv.py`:
 
 ```python
-STANDARD = "PAL"   # "PAL" for European/50Hz cameras, "NTSC" for USA/Japan/60Hz
+STANDARD = "NTSC"
 ```
 
-And in `recorder.py`, the `GST_CAPS` constant:
+And update `GST_CAPS` in `recorder.py`:
 
-```bash
-"video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
-#                                        ^^^              ^^
-#                         PAL=576, NTSC=507     with I2P: PAL=50, NTSC=60000/1001 (~60)
-#                                               no I2P:   PAL=25/1, NTSC=30000/1001
+```
+"video/x-raw,format=UYVY,width=720,height=507,framerate=60000/1001"
 ```
 
-The framerate is doubled by I2P deinterlacing (one frame per field). If you disable
-`ENABLE_I2P` in `setup-adv.py`, update the framerate here to match the native source
-rate: `25/1` for PAL, `30000/1001` for NTSC. `make stream` uses the same caps.
+(With I2P disabled: `framerate=30000/1001`.) `make stream` uses the same caps.
 
 ---
 
@@ -85,7 +83,7 @@ This patches `config.txt`, builds and installs the patched `adv7180` kernel modu
 
 ### Appliance mode (normal use)
 
-After `make setup` the Pi runs `recorder.service` automatically on every boot.
+After `make initial-setup` the Pi runs `recorder.service` automatically on every boot.
 Wait for the ACT LED to do 3 quick blinks -- that means the recorder is ready.
 While idle the LED does a quick double-blink every 2.5 seconds.
 

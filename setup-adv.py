@@ -17,14 +17,11 @@ What the kernel gets wrong or leaves unconfigured, and what this script fixes:
   3. AGC: not a V4L2 control in the adv7180 driver.
      Fix: write reg 0x2C directly.
 
-Line count / framing note (sdtv2csi issue #1, github.com/rniwase/sdtv2csi):
+Line count / framing note (https://github.com/rniwase/sdtv2csi/issues/1):
   The ADV7280-M with I2P enabled outputs additional blanking lines beyond the
-  active picture. For NTSC: 507 lines total (480 active + 27 blanking).
-  The kernel driver must be patched to expect 507 lines (see install_patch.sh).
-  For PAL: likely similar (>576 lines), causing the vertical framing offset bug
-  where bottom N lines appear at the top. The active line count in recorder.py
-  must match the standard: 720x507 for NTSC, 720x576 for PAL (plus blanking
-  offset crop if needed). See Table 72 of ADI UG-1176 for exact line counts.
+  active picture. The patched adv7180 kernel module (install_patch.sh) tells
+  the driver the correct total line counts: 507 for NTSC, 576 for PAL.
+  The GStreamer caps in recorder.py must match: 720x507 for NTSC, 720x576 for PAL.
 
   Frame rate note: I2P outputs one frame per field (not per field-pair), so
   capture rates are doubled vs. the source: PAL 50fps, NTSC ~60fps (59.94).
@@ -50,6 +47,13 @@ import time
 # Configuration -- adjust for your source signal / preferences
 # ---------------------------------------------------------------------------
 
+# Input source.
+# "CVBS_AIN1"    = composite on AIN1 (default; hardware wires camera to AIN1)
+# "CVBS_AIN2"    = composite on AIN2
+# "SVIDEO_AIN12" = S-Video (luma AIN1, chroma AIN2)
+# "SVIDEO_AIN34" = S-Video (luma AIN3, chroma AIN4)
+INPUT = "CVBS_AIN1"
+
 # Signal standard. Sets decoder mode and kernel output height (PAL=576, NTSC=507).
 # If changed, also update height and framerate in recorder.py (GST_CAPS).
 # "PAL"  = PAL B/G (European cameras, most consumer camcorders outside USA/Japan)
@@ -68,34 +72,20 @@ ENABLE_I2P = True
 ENABLE_AGC = True
 
 # Luma (contrast) gain, reg 0x08. Range 0x00-0xFF; 0x80 = 1.0x, 0xFF = 2.0x.
-# Composite CVBS signals typically need 2x to reach proper luma levels.
-# If the image is too bright, reduce toward 0x80. If AGC is disabled, this
-# is the primary brightness control.
+# If the image is too bright or too dark, adjust here.
 CONTRAST_GAIN = 0x80
 
-# --- Settings left at default (documented for reference) ---
-#
-# INPUT (reg 0x00): CVBS AIN1 (0x00). Kernel sets this at probe from the
-#   device tree input config. Other inputs: S-Video AIN1/2 = 0x08, AIN3/4 = 0x09.
-#
-# ADAPTIVE CONTRAST (ACE map reg 0x80): default OFF.
-#   Tested: "looks too bright if on". Leave at default.
-#   To enable: switch to user sub-map (reg 0x0E = 0x40), write reg 0x80 = 0x80,
-#   restore main map (reg 0x0E = 0x00).
-#
-# FREE RUN / COLOR BAR (reg 0x0C, 0x14): diagnostic test pattern.
-#   Not useful for normal capture.
-#
-# NOISE REDUCTION (reg 0x4D): tested, does not make a noticeable difference.
-#
-# ANTIALIAS (reg 0xF3): "ON causes errors" on this hardware. Leave at default.
-#
-# CHROMA FILTER / GAIN (reg 0x17, 0x2D, 0x2E): effect unclear from testing.
-#   Kernel already sets reg 0x17 = 0x41 (ADI-recommended SH1 filter for CVBS).
-#
-# BT.656-4 FLAG (reg 0x04 bit 7, 0x57->0xD7): would change NTSC output to
-#   487 lines (vs 507) when I2P is disabled. With I2P enabled, has no effect
-#   (per FPGA testing in sdtv2csi issue #1). Kernel writes 0x57 -- leave as is.
+# Adaptive Contrast Enhancement. Tested: looks too bright on composite sources.
+ENABLE_ACE = False
+
+# --- Additional settings (uncomment here AND the matching call in main) -----
+
+# NOISE_REDUCTION = 0x40        # reg 0x4D; tested: no noticeable difference
+# ANTIALIAS       = 0x80        # reg 0xF3 (user sub-map); CAUTION: causes errors on this hardware
+# ENABLE_FREE_RUN = True        # regs 0x0C, 0x14; diagnostic test pattern only
+# ENABLE_BT656_4  = True        # reg 0x04; NTSC-only: 507 -> 487 lines when I2P disabled; no effect with I2P
+# CHROMA_GAIN     = (0x00, 0x00)  # regs 0x2D, 0x2E; effect unclear from testing
+
 # ---------------------------------------------------------------------------
 
 MAIN    = 0x21
@@ -193,12 +183,19 @@ _INPUT = {
     0x09: "S-Video AIN3/4",
 }
 
+_INPUT_REGS = {
+    "CVBS_AIN1":    0x00,
+    "CVBS_AIN2":    0x01,
+    "SVIDEO_AIN12": 0x08,
+    "SVIDEO_AIN34": 0x09,
+}
+
 
 # ---- Status display --------------------------------------------------------
 
 def read_state(i2c):
     s1     = i2c.read(MAIN, 0x10)   # STATUS1: lock bits + autodetect result
-    s3     = i2c.read(MAIN, 0x13)   # STATUS3: interlaced flag, 50Hz flag
+    s3     = i2c.read(MAIN, 0x13)   # STATUS3: 50Hz flag
     inp    = i2c.read(MAIN, 0x00)   # INPUT_CONTROL: active input
     vidsel = i2c.read(MAIN, 0x02)   # INPUT_VIDSEL: decoder standard + reserved bit
     autoen = i2c.read(MAIN, 0x07)   # AUTODETECT_ENABLE: which standards to detect
@@ -220,7 +217,7 @@ def read_state(i2c):
     col_kill = bool(s1 & 0x08)   # bit 3: color killer active (no color burst detected)
 
     autod   = s1 & 0x70           # bits[6:4]: autodetected standard
-    hz50    = bool(s3 & 0x04)     # STATUS3 bit 2: 1 = 50 Hz (PAL), 0 = 60 Hz (NTSC)
+    hz50    = bool(s3 & 0x04)     # STATUS3 bit 2: 50Hz (PAL) vs 60Hz (NTSC)
 
     std_mode = vidsel >> 4
     res_bit  = bool(vidsel & 0x04)
@@ -232,7 +229,7 @@ def read_state(i2c):
     res_warn = "" if res_bit else "  *** reserved bit missing -- reboot to re-init"
 
     print(f"  Ident:        0x{ident:02X}")
-    print(f"  Signal:       {lock_str}{fsc_str} | {_AUTOD.get(autod, f'unknown 0x{autod:02X}')}{ck_str}")
+    print(f"  Signal:       {lock_str}{fsc_str} | {'50Hz' if hz50 else '60Hz'} | {_AUTOD.get(autod, f'unknown 0x{autod:02X}')}{ck_str}")
     print(f"  Input:        0x{inp:02X}  ({_INPUT.get(inp, 'unknown')})")
     print(f"  Std (0x02):   0x{vidsel:02X}  {_VIDSEL.get(std_mode, f'mode {std_mode}')}{res_warn}")
     print(f"  Autoen (0x07):0x{autoen:02X}  (0x7F = all standards enabled)")
@@ -338,10 +335,7 @@ def disable_i2p(i2c):
 
 
 def set_contrast(i2c, gain):
-    """
-    Luma contrast gain (reg 0x08). 0x80 = 1.0x (chip default), 0xFF = 2.0x.
-    Composite CVBS from consumer camcorders typically needs 2x for proper luma.
-    """
+    "Luma contrast gain (reg 0x08). 0x80 = 1.0x (chip default), 0xFF = 2.0x."
     i2c.write(MAIN, 0x08, gain)
 
 
@@ -353,6 +347,53 @@ def set_agc(i2c, enabled):
     i2c.write(MAIN, 0x2C, 0xAE if enabled else 0x8C)
 
 
+def set_input(i2c, inp):
+    """
+    Input source (reg 0x00). Kernel sets this at probe from device tree config;
+    this overrides it. See _INPUT_REGS for valid values.
+    """
+    i2c.write(MAIN, 0x00, _INPUT_REGS[inp])
+
+
+def set_ace(i2c, enabled):
+    """
+    Adaptive Contrast Enhancement (ACE sub-map reg 0x80).
+    Accessed via user sub-map (reg 0x0E = 0x40); main map restored after.
+    """
+    i2c.write(MAIN, 0x0E, 0x40)
+    i2c.write(MAIN, 0x80, 0x80 if enabled else 0x00)
+    i2c.write(MAIN, 0x0E, 0x00)
+
+
+def set_noise_reduction(i2c, val):
+    "Noise reduction (reg 0x4D). 0x40 = on, 0x00 = off."
+    i2c.write(MAIN, 0x4D, val)
+
+
+def set_antialias(i2c, val):
+    "Antialias filter (reg 0xF3, user sub-map). 0x80 = on, 0x00 = off."
+    i2c.write(MAIN, 0x0E, 0x40)
+    i2c.write(MAIN, 0xF3, val)
+    i2c.write(MAIN, 0x0E, 0x00)
+
+
+def set_free_run(i2c, enabled):
+    "Free-run / color bar test pattern (regs 0x0C, 0x14)."
+    i2c.write(MAIN, 0x0C, 0x80 if enabled else 0x00)
+    i2c.write(MAIN, 0x14, 0x00)
+
+
+def set_bt656_4(i2c, enabled):
+    "BT.656-4 timing flag (reg 0x04). Enabled: 0xD7. Default: 0x57."
+    i2c.write(MAIN, 0x04, 0xD7 if enabled else 0x57)
+
+
+def set_chroma_gain(i2c, gain1, gain2):
+    "Chroma gain (regs 0x2D, 0x2E)."
+    i2c.write(MAIN, 0x2D, gain1)
+    i2c.write(MAIN, 0x2E, gain2)
+
+
 # ---- Main ------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -362,6 +403,9 @@ if __name__ == "__main__":
         read_state(i2c)
 
         print("\n=== Applying settings ===")
+
+        set_input(i2c, INPUT)
+        print(f"  Input: {INPUT} (0x{_INPUT_REGS[INPUT]:02X})")
 
         configure_standard(i2c, STANDARD)
         print(f"  Standard: {STANDARD} (reg 0x02 via VIDIOC_S_STD, 0x07=0x7F)")
@@ -378,6 +422,15 @@ if __name__ == "__main__":
 
         set_agc(i2c, ENABLE_AGC)
         print(f"  AGC: {'enabled' if ENABLE_AGC else 'disabled'}")
+
+        set_ace(i2c, ENABLE_ACE)
+        print(f"  ACE: {'enabled' if ENABLE_ACE else 'disabled'}")
+
+        # set_noise_reduction(i2c, NOISE_REDUCTION)
+        # set_antialias(i2c, ANTIALIAS)
+        # set_free_run(i2c, ENABLE_FREE_RUN)
+        # set_bt656_4(i2c, ENABLE_BT656_4)
+        # set_chroma_gain(i2c, *CHROMA_GAIN)
 
         # Allow chip time to lock after standard change
         time.sleep(0.5)
