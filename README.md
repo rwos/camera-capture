@@ -175,6 +175,23 @@ make recordings
 # -> recordings/video_YYYYMMDD_HHMMSS.mp4 (H.265, CRF 16)
 ```
 
+### Extracting stills from a recording
+
+`stills-from-video` (included) extracts JPEG frames from an AVI at a chosen rate.
+It creates a directory named after the file and saves frames as `frame_000001.jpg`, etc.
+JPEG quality is set to maximum (`-q:v 1`). Runs on the Mac/PC; requires `ffmpeg`.
+
+```bash
+stills-from-video 1  video_20261015_143022.avi   # one frame per second
+stills-from-video 10 video_20261015_143022.avi   # 10 frames per second
+stills-from-video 50 video_20261015_143022.avi   # every frame (50fps source)
+# -> video_20261015_143022/frame_000001.jpg ...
+```
+
+Rate 1–50: 50 extracts all frames, 1 extracts one frame per second of footage.
+
+---
+
 ### Manual capture (via SSH)
 
 ```bash
@@ -217,6 +234,7 @@ Default Pi address is `camera.local`; edit the Makefile if yours differs.
 | `make recordings` | Sync `/home/pi/recordings/` to Mac, delete from Pi, transcode to H.265 |
 | `make down [FILE=name]` | Download `name.avi` from Pi (default: `capture`) |
 | `make transcode [FILE=name]` | Convert `name.avi` -> `name.mp4` (H.264) on Mac |
+| `stills-from-video <rate> <file>` | Extract JPEG stills from AVI at rate 1–50 fps |
 
 ---
 

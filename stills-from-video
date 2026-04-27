@@ -1,0 +1,32 @@
+#!/bin/bash
+# Extract JPEG stills from an MJPEG AVI at a given rate.
+# Frames are re-encoded at maximum JPEG quality (ffmpeg -q:v 1).
+# Runs on the Mac/PC; requires ffmpeg (brew install ffmpeg).
+set -euo pipefail
+
+usage() {
+    echo "Usage: stills-from-video <rate 1-50> <avi-file>" >&2
+    echo "  rate 50 = every frame; rate 1 = one frame per second" >&2
+    exit 1
+}
+
+[ "$#" -eq 2 ] || usage
+
+rate="$1"
+avi="$2"
+
+if ! [[ "$rate" =~ ^[0-9]+$ ]] || [ "$rate" -lt 1 ] || [ "$rate" -gt 50 ]; then
+    echo "stills-from-video: rate must be an integer 1-50" >&2
+    exit 1
+fi
+
+[ -f "$avi" ] || { echo "stills-from-video: not found: $avi" >&2; exit 1; }
+
+base="${avi##*/}"        # strip directory
+outdir="${base%.*}"      # strip extension
+
+mkdir -p "$outdir"
+echo "Extracting at ${rate}fps -> $outdir/"
+ffmpeg -i "$avi" -vf "fps=${rate}" -q:v 1 "$outdir/frame_%06d.jpg"
+count=$(ls "$outdir"/frame_*.jpg 2>/dev/null | wc -l | tr -d ' ')
+echo "$count frames saved to $outdir/"

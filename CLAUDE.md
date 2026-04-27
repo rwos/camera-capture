@@ -21,6 +21,12 @@ make down [FILE=basename]   # Download captured AVI from Pi (default: capture.av
 make transcode [FILE=basename]  # Convert AVI -> H264 MP4 on Mac (default: capture)
 ```
 
+Mac-side utilities (not deployed to Pi):
+
+```bash
+stills-from-video <rate 1-50> <avi-file>   # Extract JPEG stills; creates dir named after file
+```
+
 Capture workflow:
 1. `make setup` (first time / after reboot to reconfigure ADV7280)
 2. SSH to Pi and run: `bash capture.sh <basename>` (records to `/home/pi/<basename>.avi`)
