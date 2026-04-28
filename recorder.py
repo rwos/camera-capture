@@ -44,9 +44,9 @@ DEBOUNCE_S        = 0.05   # 50 ms button debounce
 POLL_S            = 0.02   # 20 ms polling interval
 BLINK_ON_S        = 0.5    # LED on duration while recording
 BLINK_OFF_S       = 0.5    # LED off duration while recording
-HEARTBEAT_S       = 2.5    # pause between idle double-blinks
-HEARTBEAT_BLINK_S = 0.08   # each pulse in the idle double-blink
-HEARTBEAT_GAP_S   = 0.12   # gap between the two pulses
+HEARTBEAT_S       = 5.0    # pause between idle double-blinks
+HEARTBEAT_BLINK_S = 0.04   # each pulse in the idle double-blink
+HEARTBEAT_GAP_S   = 0.08   # gap between the two pulses
 STARTUP_BLINKS    = 3      # number of blinks on startup
 
 
