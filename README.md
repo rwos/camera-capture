@@ -61,13 +61,14 @@ In `setup-adv.py`:
 STANDARD = "NTSC"
 ```
 
-And update `GST_CAPS` in `recorder.py`:
+And in `recorder.py`, update both the resolution and framerate:
 
-```
-"video/x-raw,format=UYVY,width=720,height=507,framerate=60000/1001"
+```python
+GST_CAPS      = "video/x-raw,format=UYVY,width=720,height=507"
+GST_FRAMERATE = "60000/1001"   # NTSC + I2P (~59.94 fps)
 ```
 
-(With I2P disabled: `framerate=30000/1001`.) `make stream` uses the same caps.
+(With I2P disabled: `GST_FRAMERATE = "30000/1001"`.) `make stream` uses the same settings.
 
 ---
 

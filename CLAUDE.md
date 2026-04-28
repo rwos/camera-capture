@@ -73,12 +73,14 @@ by `setup-pi.sh` / `make setup`.
 
 ### Key Video Dimensions
 
-- V4L2 output: `720x576` @ **50fps** (PAL), UYVY422; NTSC: `720x507` @ **~60fps**
-- I2P deinterlacing doubles the frame rate: one progressive frame per field, not per field-pair
-  (PAL source 25fps → 50fps output; NTSC ~30fps → ~60fps output)
-- GStreamer caps and AVI/MP4 container headers must use the doubled rate (50/1 for PAL)
+- V4L2 output dimensions: `720x576` (PAL), `720x507` (NTSC), UYVY422
+- V4L2 driver reports 25fps (PAL) / ~30fps (NTSC) via timeperframe (field rate)
+- I2P deinterlacing doubles the actual frame rate: one progressive frame per field, not per
+  field-pair (PAL: 50fps output; NTSC: ~60fps output)
+- `capssetter` in the GStreamer pipeline overrides the framerate metadata downstream so the
+  AVI header uses the correct doubled rate; `GST_FRAMERATE` in recorder.py controls this
 - To capture at native 25fps (PAL) / ~30fps (NTSC): set ENABLE_I2P=False in setup-adv.py
-  and update framerate in recorder.py; output will be interlaced
+  and update `GST_CAPS` (height) and `GST_FRAMERATE` in recorder.py; output will be interlaced
 
 ### Kernel Module
 

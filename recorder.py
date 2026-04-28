@@ -33,12 +33,12 @@ LED_BRIGHTNESS = Path("/sys/class/leds/ACT/brightness")
 
 RECORDINGS_DIR = Path("/home/pi/recordings")
 VIDEO_DEV      = "/dev/video0"
-# With I2P deinterlacing enabled, the ADV7280 outputs one progressive frame per
-# analog field, doubling the frame rate: PAL 25fps -> 50fps, NTSC ~30fps -> ~60fps.
-# This must match the actual hardware output or the AVI header will be wrong
-# (causing wrong playback speed). To get native 25fps (PAL) / ~30fps (NTSC),
-# set ENABLE_I2P = False in setup-adv.py and change framerate to 25/1 or 30000/1001.
-GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576,framerate=50/1"
+# V4L2 driver reports 25fps (PAL field rate) via timeperframe; with I2P the hardware
+# actually outputs 50fps. Omit framerate from v4l2src caps so GStreamer negotiation
+# succeeds, then use capssetter to set the correct rate downstream for the AVI header.
+# For NTSC: height=507, GST_FRAMERATE="60000/1001". Without I2P: halve the framerate.
+GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576"  # PAL; NTSC: height=507
+GST_FRAMERATE  = "50/1"    # PAL + I2P; NTSC + I2P: 60000/1001
 
 DEBOUNCE_S        = 0.05   # 50 ms button debounce
 POLL_S            = 0.02   # 20 ms polling interval
@@ -54,6 +54,7 @@ def gst_record_cmd(path):
     return (
         f"gst-launch-1.0 -e "
         f"v4l2src device={VIDEO_DEV} ! '{GST_CAPS}' ! "
+        f"capssetter caps='video/x-raw,framerate={GST_FRAMERATE}' ! "
         f"v4l2jpegenc ! avimux ! filesink location='{path}'"
     )
 
@@ -62,6 +63,7 @@ def gst_stream_cmd():
     return (
         f"gst-launch-1.0 -q -e "
         f"v4l2src device={VIDEO_DEV} ! '{GST_CAPS}' ! "
+        f"capssetter caps='video/x-raw,framerate={GST_FRAMERATE}' ! "
         f"v4l2jpegenc ! fdsink fd=1"
     )
 

@@ -21,15 +21,19 @@ Line count / framing note (https://github.com/rniwase/sdtv2csi/issues/1):
   The ADV7280-M with I2P enabled outputs additional blanking lines beyond the
   active picture. The patched adv7180 kernel module (install_patch.sh) tells
   the driver the correct total line counts: 507 for NTSC, 576 for PAL.
-  The GStreamer caps in recorder.py must match: 720x507 for NTSC, 720x576 for PAL.
-
-  Frame rate note: I2P outputs one frame per field (not per field-pair), so
-  capture rates are doubled vs. the source: PAL 50fps, NTSC ~60fps (59.94).
-  GStreamer caps and AVI/MP4 container headers must use these doubled rates.
+  GST_CAPS in recorder.py must match: height=576 for PAL, height=507 for NTSC.
 
   Setting STANDARD correctly here ensures the kernel reports the right height
   to capture tools (FFmpeg etc.). Without this, the kernel defaults to NTSC
   dimensions regardless of the actual signal.
+
+Frame rate note:
+  I2P outputs one frame per field (not per field-pair), doubling the capture rate
+  vs. the source: PAL 50fps, NTSC ~60fps (59.94). The V4L2 driver still reports the
+  field rate (25fps PAL, ~30fps NTSC) via timeperframe -- this is what GStreamer
+  negotiates with the device. recorder.py uses capssetter to set the correct doubled
+  rate downstream for the AVI header. GST_FRAMERATE controls this: 50/1 for PAL,
+  60000/1001 for NTSC. Update it (and GST_CAPS height) when switching standards.
 
 I2C addresses (7-bit):
   0x21 - main register map       (/dev/i2c-10)
