@@ -17,7 +17,7 @@ upload:
 
 setup: upload
 	@echo "Installing packages and setting up recorder service..."
-	$(SSH) "bash /home/pi/setup-pi.sh"
+	$(SSH) "bash /home/pi/setup-pi.sh && sudo systemctl restart recorder.service"
 
 initial-setup: setup
 	@echo "Patching /boot/firmware/config.txt..."
