@@ -2,9 +2,8 @@
 """
 Appliance-mode recorder for ADV7280 uHat Shield analog video capture.
 
-Button 1 (GPIO 24, corner of board): start recording
-Button 2 (GPIO 23):                  stop recording (if recording); idle: no-op
-Pi ACT LED (sysfs):                  blinks while recording
+Button (GPIO 24, corner of board): toggle recording (start if idle, stop if recording)
+External LED (GPIO 25):            blinks while recording; double-blinks while idle
 
 Recordings saved to /home/pi/recordings/:
   video_YYYYMMDD_HHMMSS.avi
@@ -24,12 +23,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-BTN_START  = 24        # corner button -- start recording
-BTN_ACTION = 23        # other button  -- stop recording
-
-# Pi ACT LED -- controlled via sysfs (kernel owns the GPIO)
-LED_TRIGGER    = Path("/sys/class/leds/ACT/trigger")
-LED_BRIGHTNESS = Path("/sys/class/leds/ACT/brightness")
+BTN_TOGGLE = 24        # corner button -- toggle recording
+LED_GPIO   = 25        # external red LED (active-high; 180Ω to anode, cathode to GND)
 
 RECORDINGS_DIR = Path("/home/pi/recordings")
 VIDEO_DEV      = "/dev/video0"
@@ -73,11 +68,8 @@ class Recorder:
         RECORDINGS_DIR.mkdir(exist_ok=True)
 
         self.h = lgpio.gpiochip_open(0)
-        lgpio.gpio_claim_input(self.h, BTN_START,  lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_input(self.h, BTN_ACTION, lgpio.SET_PULL_UP)
-
-        LED_TRIGGER.write_text("none\n")    # take manual control of ACT LED
-        LED_BRIGHTNESS.write_text("0\n")    # start with LED off
+        lgpio.gpio_claim_input(self.h, BTN_TOGGLE, lgpio.SET_PULL_UP)
+        lgpio.gpio_claim_output(self.h, LED_GPIO, 0)
 
         self.proc     = None    # active recording subprocess
         self.rec_path = None
@@ -85,14 +77,14 @@ class Recorder:
         self._blink_stop = threading.Event()
         self._blink_thread = None
 
-        self._prev = {BTN_START: 1, BTN_ACTION: 1}
-        self._last = {BTN_START: 0, BTN_ACTION: 0}
+        self._prev = {BTN_TOGGLE: 1}
+        self._last = {BTN_TOGGLE: 0}
 
     # ------------------------------------------------------------------
     # LED
 
     def _led(self, on):
-        LED_BRIGHTNESS.write_text("1\n" if on else "0\n")
+        lgpio.gpio_write(self.h, LED_GPIO, 1 if on else 0)
 
     def _blink_loop(self):
         while not self._blink_stop.is_set():
@@ -146,13 +138,13 @@ class Recorder:
     # ------------------------------------------------------------------
     # Main loop
 
-    def _check_button(self, pin, now):
-        val = lgpio.gpio_read(self.h, pin)
-        pressed = (val == 0 and self._prev[pin] == 1
-                   and (now - self._last[pin]) > DEBOUNCE_S)
-        if val != self._prev[pin]:
-            self._last[pin] = now
-        self._prev[pin] = val
+    def _check_button(self, now):
+        val = lgpio.gpio_read(self.h, BTN_TOGGLE)
+        pressed = (val == 0 and self._prev[BTN_TOGGLE] == 1
+                   and (now - self._last[BTN_TOGGLE]) > DEBOUNCE_S)
+        if val != self._prev[BTN_TOGGLE]:
+            self._last[BTN_TOGGLE] = now
+        self._prev[BTN_TOGGLE] = val
         return pressed
 
     def _check_recording_alive(self):
@@ -164,19 +156,16 @@ class Recorder:
 
     def run(self):
         self._flash_startup()
-        print("Recorder ready. Button 1: start recording. Button 2: stop.", flush=True)
+        print("Recorder ready. Button: toggle recording.", flush=True)
         next_heartbeat = time.monotonic() + HEARTBEAT_S
         try:
             while True:
                 now = time.monotonic()
 
-                if self._check_button(BTN_START, now):
+                if self._check_button(now):
                     if self.proc is None:
                         self._start_recording()
-                    # already recording -- button 1 does nothing
-
-                if self._check_button(BTN_ACTION, now):
-                    if self.proc is not None:
+                    else:
                         self._stop_recording()
 
                 self._check_recording_alive()
@@ -195,7 +184,6 @@ class Recorder:
             if self.proc is not None:
                 self._stop_recording()
             self._led(False)
-            LED_TRIGGER.write_text("mmc0\n")   # restore normal SD activity LED
             lgpio.gpiochip_close(self.h)
 
 

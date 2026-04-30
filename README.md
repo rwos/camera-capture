@@ -24,8 +24,11 @@ below.
 - ADV7280 uHat Shield ([Hackaday.io](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield))
 - SD card (Class 10 / A1 recommended -- captures run ~1.1 MB/s)
 - Analog video source (composite CVBS or S-Video)
+- Red LED + 180Ω resistor (status indicator)
 
 The hat connects via the 40-pin GPIO header and routes video through the CSI ribbon connector.
+
+**LED wiring:** GPIO 25 (physical pin 22) → 180Ω resistor → LED anode (+) → LED cathode (−) → GND (e.g. physical pin 20). Red LED, ~7mA.
 
 ---
 
@@ -96,13 +99,12 @@ make setup
 ### Appliance mode (normal use)
 
 After `make initial-setup` the Pi runs `recorder.service` automatically on every boot.
-Wait for the ACT LED to do 3 quick blinks -- that means the recorder is ready.
+Wait for the external LED (GPIO 25) to do 3 quick blinks -- that means the recorder is ready.
 While idle the LED does a quick double-blink every 2.5 seconds.
 
-| Button | Idle | Recording |
-|--------|------|-----------|
-| Button 1 (GPIO 24, corner) | Start recording | Nothing |
-| Button 2 (GPIO 23) | Nothing | Stop recording |
+| Button | Action |
+|--------|--------|
+| Button (GPIO 24, corner) | Toggle recording (start if idle, stop if recording) |
 
 Recordings are saved to `/home/pi/recordings/` with timestamped names
 (`video_YYYYMMDD_HHMMSS.avi`).
