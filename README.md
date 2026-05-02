@@ -12,6 +12,10 @@ Configured for PAL by default; NTSC is supported with minor changes (see below).
 * Hardware creator's repo: [lerabot/dvx-nebula](https://github.com/lerabot/dvx-nebula).
 * Based on [sdtv2csi](https://github.com/rniwase/sdtv2csi) by rniwase.
 
+This does ***not*** capture sound. I don't remember if the hardware would
+support that, I think it would have to go through the rPi directly. I capture
+sound separately, so there's nothing in here that does sound.
+
 ## Hardware required
 
 - Raspberry Pi Zero 2W
