@@ -12,20 +12,15 @@ Configured for PAL by default; NTSC is supported with minor changes (see below).
 * Hardware creator's repo: [lerabot/dvx-nebula](https://github.com/lerabot/dvx-nebula).
 * Based on [sdtv2csi](https://github.com/rniwase/sdtv2csi) by rniwase.
 
----
-
 ## Hardware required
 
 - Raspberry Pi Zero 2W
 - ADV7280 uHat Shield ([Hackaday.io](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield))
 - SD card (Class 10 / A1 recommended -- captures run ~1.1 MB/s)
 - Analog video source (composite CVBS or S-Video)
-- Momentary push button
-- Red LED + 150Ω resistor
+- (optional) push button, LED + resistor
 
 The hat connects via the 40-pin GPIO header and routes video through the CSI ribbon connector.
-
----
 
 ## How it works
 
@@ -43,8 +38,6 @@ source: the required UYVY→YUV420p conversion maxes out at ~23 fps, below the 5
 With I2P deinterlacing (the default), the ADV7280 outputs one progressive frame per field,
 doubling the rate: **50 fps for PAL, ~60 fps for NTSC**. Captures are saved as MJPEG AVI
 (~1.1 MB/s). `make recordings` syncs to the Mac and transcodes to H.265.
-
----
 
 ## Camera-specific settings
 
@@ -93,19 +86,12 @@ To re-apply after changing `recorder.py` or other scripts (without rebuilding th
 make setup
 ```
 
----
-
 ## Capturing video
 
 ### Appliance mode (normal use)
 
-After `make initial-setup` the Pi runs `recorder.service` on every boot. The LED does 3 quick
-blinks when the recorder is ready, then a double-blink every 2.5 seconds while idle.
-
-| Button (GPIO 20, physical pin 38) | Action |
-|---|---|
-| Press | Start recording |
-| Press again | Stop recording |
+The Pi runs `recorder.service` on every boot. The LED does 3 quick blinks when
+the recorder is ready, then a double-blink every 2.5 seconds while idle.
 
 Recordings are saved to `/home/pi/recordings/` as `video_YYYYMMDD_HHMMSS.avi`.
 
@@ -119,17 +105,14 @@ make recordings
 
 #### Button and LED wiring
 
-Physical pins 38–40 (the last three on the header):
+As it is, this uses:
 
 | Physical pin | GPIO | Connection |
 |---|---|---|
 | 38 | GPIO 20 | Button: one leg to pin 38, other leg to GND |
-| 39 | — | GND |
 | 40 | GPIO 21 | LED anode (+) → 150Ω → GPIO 21; cathode (−) → GND |
 
 GPIO assignments can be changed via `BTN_TOGGLE` and `LED_GPIO` at the top of `recorder.py`.
-
----
 
 ### Extracting stills from a recording
 
@@ -144,12 +127,10 @@ stills-from-video 50 video_20261015_143022.avi   # every frame (50fps source)
 # -> video_20261015_143022/frame_000001.jpg ...
 ```
 
----
-
 ## Live preview (for setup / debugging)
 
 ```bash
 make stream
 ```
 
-Streams MJPEG from the Pi and plays it locally via ffplay. Low latency (~1 frame).
+Streams MJPEG from the Pi and plays it locally via ffplay.
