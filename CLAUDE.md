@@ -61,8 +61,8 @@ by `setup-pi.sh` / `make setup`.
    Run automatically on boot by `recorder.service`.
 
 2. `recorder.py` -- Appliance-mode daemon (run by `recorder.service`). Polls one GPIO button
-   (GPIO24, corner): toggles recording. Blinks an external LED (GPIO25, active-high) while
-   recording; double-blinks while idle.
+   (GPIO20, physical pin 38): toggles recording. Blinks an external LED (GPIO21, physical pin
+   40, active-high, 150Ω) while recording; double-blinks while idle.
 
 3. `setup-pi.sh` -- One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
    a systemd service for persistent CPU performance mode, then runs `setup-adv.py`.
