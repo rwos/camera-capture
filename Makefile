@@ -6,14 +6,14 @@ SSH  = sshpass -p "$(PI_PASS)" ssh  $(PI_USER)@$(PI_HOST)
 SCP  = sshpass -p "$(PI_PASS)" scp
 RSYNC = sshpass -p "$(PI_PASS)" rsync
 
-.PHONY: ssh upload setup initial-setup settings-update stream recordings
+.PHONY: ssh upload setup initial-setup settings-update optimize stream recordings
 
 ssh:
 	$(SSH)
 
 upload:
 	@echo "Uploading scripts..."
-	$(SCP) setup-adv.py setup-pi.sh install_patch.sh recorder.py recorder.service $(PI_USER)@$(PI_HOST):/home/pi/
+	$(SCP) setup-adv.py setup-pi.sh install_patch.sh recorder.py recorder.service optimize-pi.sh $(PI_USER)@$(PI_HOST):/home/pi/
 
 setup: upload
 	@echo "Installing packages and setting up recorder service..."
@@ -27,6 +27,10 @@ initial-setup: setup
 	$(SSH) "sudo bash /home/pi/install_patch.sh"
 	@echo "Rebooting Pi..."
 	-$(SSH) "sudo reboot"
+
+optimize: upload
+	@echo "Disabling unnecessary services..."
+	$(SSH) "bash /home/pi/optimize-pi.sh"
 
 settings-update: upload
 	$(SSH) "python3 /home/pi/setup-adv.py"

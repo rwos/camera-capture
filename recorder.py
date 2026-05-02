@@ -2,8 +2,8 @@
 """
 Appliance-mode recorder for ADV7280 uHat Shield analog video capture.
 
-Button (GPIO 20, physical pin 38): toggle recording (start if idle, stop if recording)
-External LED (GPIO 21, physical pin 40): blinks while recording; double-blinks while idle
+Button (GPIO 24, physical pin 18): toggle recording (start if idle, stop if recording)
+External LED (GPIO 16, physical pin 36): blinks while recording; double-blinks while idle
 
 Recordings saved to /home/pi/recordings/:
   video_YYYYMMDD_HHMMSS.avi
@@ -23,8 +23,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-BTN_TOGGLE = 20        # physical pin 38 -- toggle recording  (hat corner buttons: GPIO24, GPIO23)
-LED_GPIO   = 21        # physical pin 40 -- external red LED, active-high, 150Ω to anode
+BTN_TOGGLE = 24        # physical pin 18 -- toggle recording
+LED_GPIO   = 16        # physical pin 36 -- external red LED, active-high, 150Ω to anode
                        # original: Pi ACT LED via sysfs /sys/class/leds/ACT/brightness
 
 RECORDINGS_DIR = Path("/home/pi/recordings")
@@ -78,7 +78,7 @@ class Recorder:
         self._blink_stop = threading.Event()
         self._blink_thread = None
 
-        self._prev = {BTN_TOGGLE: 1}
+        self._prev = {BTN_TOGGLE: lgpio.gpio_read(self.h, BTN_TOGGLE)}
         self._last = {BTN_TOGGLE: 0}
 
     # ------------------------------------------------------------------
