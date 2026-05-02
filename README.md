@@ -127,7 +127,7 @@ Physical pins 38–40 (the last three on the header):
 | 39 | — | GND |
 | 40 | GPIO 21 | LED anode (+) → 150Ω → GPIO 21; cathode (−) → GND |
 
-The button uses the internal pull-up; no external resistor needed. Red LED at ~8.7mA.
+GPIO assignments can be changed via `BTN_TOGGLE` and `LED_GPIO` at the top of `recorder.py`.
 
 ---
 
