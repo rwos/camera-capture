@@ -4,17 +4,13 @@
 > and camera on fire. Everything in here (especially comments) might be totally wrong.
 > Use with some skepticism.
 
-Capture analog video (composite CVBS or S-Video) at full quality on a Raspberry Pi Zero 2W,
-using the [ADV7280 uHat Shield](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield).
-
-Out of the box, this is set up to work with PAL video cameras (I have a couple
-old Newvicon cameras that I use this with), connected via composite. It should
-be flexible enough to also work with NTSC cameras, with a few changes, detailed
-below.
+Capture analog video (composite CVBS or S-Video) on a Raspberry Pi Zero 2W using the
+[ADV7280 uHat Shield](https://hackaday.io/project/201713-analog-video-capture-adv7280-uhat-shield).
+Configured for PAL by default; NTSC is supported with minor changes (see below).
 
 * Hardware (was) available from [Ethermata on Tindie](https://www.tindie.com/products/ethermata/analog-video-capture-adv7280m-uhat-prototype/).
-* Hardware creator's repo (geared towards an NTSC camera, the Panaosonic DVX100): [lerabot/dvx-nebula](https://github.com/lerabot/dvx-nebula).
-* Hardware based on the [sdtv2csi](https://github.com/rniwase/sdtv2csi) project by rniwase, and kernel patch setup taken from there.
+* Hardware creator's repo: [lerabot/dvx-nebula](https://github.com/lerabot/dvx-nebula).
+* Based on [sdtv2csi](https://github.com/rniwase/sdtv2csi) by rniwase.
 
 ---
 
@@ -25,23 +21,9 @@ below.
 - SD card (Class 10 / A1 recommended -- captures run ~1.1 MB/s)
 - Analog video source (composite CVBS or S-Video)
 - Momentary push button
-- Red LED + 150Ω resistor (status indicator)
+- Red LED + 150Ω resistor
 
 The hat connects via the 40-pin GPIO header and routes video through the CSI ribbon connector.
-
----
-
-## Button and LED wiring
-
-Pins 38, 39, 40 (the last three on the header) are used — convenient to wire together:
-
-| Physical pin | GPIO | Connection |
-|---|---|---|
-| 38 | GPIO 20 | Button: one leg to pin 38, other leg to GND |
-| 39 | — | GND |
-| 40 | GPIO 21 | LED: GPIO 21 → 150Ω resistor → LED anode (+) → LED cathode (−) → GND |
-
-The button uses the internal pull-up; no external resistor needed. Red LED at ~8.7mA.
 
 ---
 
@@ -51,19 +33,23 @@ The button uses the internal pull-up; no external resistor needed. Red LED at ~8
 Analog video → ADV7280 → CSI → V4L2 (/dev/video0) → GStreamer → MJPEG AVI
 ```
 
-The ADV7280 chip converts the analog signal to a digital UYVY stream over MIPI CSI-2. A patched `adv7180` kernel module tells the driver the correct frame dimensions.
+The ADV7280 converts the analog signal to a UYVY stream over MIPI CSI-2. A patched `adv7180`
+kernel module sets the correct frame dimensions.
 
-GStreamer captures from V4L2 and encodes using the Pi's **hardware JPEG encoder** (`v4l2jpegenc`), which accepts UYVY directly — no CPU-side colour conversion. This matters: the Pi Zero 2W can't do real-time H.264 because that requires a CPU-side colour space conversion that maxes out at ~23 fps on this hardware, well below the 50 fps input rate.
+GStreamer encodes using the Pi's **hardware JPEG encoder** (`v4l2jpegenc`), which accepts UYVY
+directly with no CPU-side colour conversion. The Pi Zero 2W cannot do real-time H.264 from this
+source: the required UYVY→YUV420p conversion maxes out at ~23 fps, below the 50 fps input rate.
 
-With I2P deinterlacing enabled (the default), the ADV7280 outputs one progressive frame per *field* rather than per frame-pair, doubling the output rate: **50 fps for PAL, ~60 fps for NTSC**. Captures are saved as MJPEG AVI (~1.1 MB/s). `make recordings` syncs them to the Mac and transcodes to H.265.
+With I2P deinterlacing (the default), the ADV7280 outputs one progressive frame per field,
+doubling the rate: **50 fps for PAL, ~60 fps for NTSC**. Captures are saved as MJPEG AVI
+(~1.1 MB/s). `make recordings` syncs to the Mac and transcodes to H.265.
 
 ---
 
 ## Camera-specific settings
 
-`setup-adv.py` has configurable options near the top: input source (CVBS/S-Video),
-signal standard, I2P deinterlacing, AGC, contrast, and adaptive contrast.
-After changing settings, upload and apply with:
+`setup-adv.py` has configurable options near the top: input source (CVBS/S-Video), signal
+standard, I2P deinterlacing, AGC, contrast, and adaptive contrast. After changing settings:
 
 ```bash
 make settings-update
@@ -77,7 +63,7 @@ In `setup-adv.py`:
 STANDARD = "NTSC"
 ```
 
-And in `recorder.py`, update both the resolution and framerate:
+In `recorder.py`:
 
 ```python
 GST_CAPS      = "video/x-raw,format=UYVY,width=720,height=507"
@@ -97,7 +83,9 @@ GST_FRAMERATE = "60000/1001"   # NTSC + I2P (~59.94 fps)
 make initial-setup
 ```
 
-Uploads scripts, installs packages, patches `config.txt`, builds and installs the patched `adv7180` kernel module (takes a few minutes), and reboots. The recorder service starts automatically on every subsequent boot.
+Uploads scripts, installs packages, patches `config.txt`, builds and installs the patched
+`adv7180` kernel module (takes a few minutes), and reboots. The recorder service starts
+automatically on every subsequent boot.
 
 To re-apply after changing `recorder.py` or other scripts (without rebuilding the kernel module):
 
@@ -111,16 +99,15 @@ make setup
 
 ### Appliance mode (normal use)
 
-After `make initial-setup` the Pi runs `recorder.service` automatically on every boot.
-Wait for the external LED to do 3 quick blinks -- that means the recorder is ready.
-While idle the LED does a quick double-blink every 2.5 seconds.
+After `make initial-setup` the Pi runs `recorder.service` on every boot. The LED does 3 quick
+blinks when the recorder is ready, then a double-blink every 2.5 seconds while idle.
 
-| Button | Action |
-|--------|--------|
-| Button (GPIO 20, physical pin 38) | Toggle recording (start if idle, stop if recording) |
+| Button (GPIO 20, physical pin 38) | Action |
+|---|---|
+| Press | Start recording |
+| Press again | Stop recording |
 
-Recordings are saved to `/home/pi/recordings/` with timestamped names
-(`video_YYYYMMDD_HHMMSS.avi`).
+Recordings are saved to `/home/pi/recordings/` as `video_YYYYMMDD_HHMMSS.avi`.
 
 To sync to the Mac, transcode to H.265, and delete from the Pi:
 
@@ -129,6 +116,20 @@ make recordings
 # -> recordings/video_YYYYMMDD_HHMMSS.mp4      (H.265, CRF 16, normal speed)
 # -> recordings/video_YYYYMMDD_HHMMSS_slow.mp4 (H.265, CRF 16, half speed)
 ```
+
+#### Button and LED wiring
+
+Physical pins 38–40 (the last three on the header):
+
+| Physical pin | GPIO | Connection |
+|---|---|---|
+| 38 | GPIO 20 | Button: one leg to pin 38, other leg to GND |
+| 39 | — | GND |
+| 40 | GPIO 21 | LED anode (+) → 150Ω → GPIO 21; cathode (−) → GND |
+
+The button uses the internal pull-up; no external resistor needed. Red LED at ~8.7mA.
+
+---
 
 ### Extracting stills from a recording
 
@@ -147,10 +148,8 @@ stills-from-video 50 video_20261015_143022.avi   # every frame (50fps source)
 
 ## Live preview (for setup / debugging)
 
-Streams MJPEG from the Pi and plays it locally via ffplay:
-
 ```bash
 make stream
 ```
 
-Low latency (~1 frame). Useful for checking framing and signal lock before capturing.
+Streams MJPEG from the Pi and plays it locally via ffplay. Low latency (~1 frame).
