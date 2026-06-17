@@ -29,8 +29,10 @@ initial-setup: setup
 	-$(SSH) "sudo reboot"
 
 optimize: upload
-	@echo "Disabling unnecessary services..."
+	@echo "Applying boot-time optimizations..."
 	$(SSH) "bash /home/pi/optimize-pi.sh"
+	@echo "Rebooting..."
+	-$(SSH) "sudo reboot"
 
 settings-update: upload
 	$(SSH) "python3 /home/pi/setup-adv.py"

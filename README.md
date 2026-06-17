@@ -90,6 +90,12 @@ To re-apply after changing `recorder.py` or other scripts (without rebuilding th
 make setup
 ```
 
+To reduce boot time (optional, reboots):
+
+```bash
+make optimize
+```
+
 ## Capturing video
 
 ### Appliance mode (normal use)

@@ -1,6 +1,6 @@
 [Unit]
 Description=Analog video recorder (ADV7280 uHat Shield)
-After=multi-user.target
+After=basic.target
 
 [Service]
 Type=simple
