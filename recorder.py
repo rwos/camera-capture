@@ -78,8 +78,9 @@ class Recorder:
         self._blink_stop = threading.Event()
         self._blink_thread = None
 
-        self._prev = {BTN_TOGGLE: lgpio.gpio_read(self.h, BTN_TOGGLE)}
-        self._last = {BTN_TOGGLE: 0}
+        self._prev  = {BTN_TOGGLE: lgpio.gpio_read(self.h, BTN_TOGGLE)}
+        self._last  = {BTN_TOGGLE: time.monotonic()}
+        self._fired = {BTN_TOGGLE: False}
 
     # ------------------------------------------------------------------
     # LED
@@ -141,12 +142,17 @@ class Recorder:
 
     def _check_button(self, now):
         val = lgpio.gpio_read(self.h, BTN_TOGGLE)
-        pressed = (val == 0 and self._prev[BTN_TOGGLE] == 1
-                   and (now - self._last[BTN_TOGGLE]) > DEBOUNCE_S)
         if val != self._prev[BTN_TOGGLE]:
+            self._prev[BTN_TOGGLE] = val
             self._last[BTN_TOGGLE] = now
-        self._prev[BTN_TOGGLE] = val
-        return pressed
+            if val == 1:
+                self._fired[BTN_TOGGLE] = False  # reset on release
+            return False
+        # fire once when button has been stably LOW for the debounce period
+        if val == 0 and not self._fired[BTN_TOGGLE] and (now - self._last[BTN_TOGGLE]) >= DEBOUNCE_S:
+            self._fired[BTN_TOGGLE] = True
+            return True
+        return False
 
     def _check_recording_alive(self):
         if self.proc and self.proc.poll() is not None:
