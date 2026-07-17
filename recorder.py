@@ -36,7 +36,7 @@ VIDEO_DEV      = "/dev/video0"
 GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576"  # PAL; NTSC: height=507
 GST_FRAMERATE  = "50/1"    # PAL + I2P; NTSC + I2P: 60000/1001
 
-DEBOUNCE_S        = 0.05   # 50 ms button debounce
+DEBOUNCE_S        = 0.10   # 100 ms button debounce
 POLL_S            = 0.02   # 20 ms polling interval
 BLINK_ON_S        = 0.5    # LED on duration while recording
 BLINK_OFF_S       = 0.5    # LED off duration while recording
@@ -143,6 +143,9 @@ class Recorder:
     def _check_button(self, now):
         val = lgpio.gpio_read(self.h, BTN_TOGGLE)
         if val != self._prev[BTN_TOGGLE]:
+            direction = "LOW" if val == 0 else "HIGH"
+            held_ms = (now - self._last[BTN_TOGGLE]) * 1000
+            print(f"BTN -> {direction} (was {'LOW' if val else 'HIGH'} for {held_ms:.1f}ms, fired={self._fired[BTN_TOGGLE]})", flush=True)
             self._prev[BTN_TOGGLE] = val
             self._last[BTN_TOGGLE] = now
             if val == 1:
@@ -151,6 +154,7 @@ class Recorder:
         # fire once when button has been stably LOW for the debounce period
         if val == 0 and not self._fired[BTN_TOGGLE] and (now - self._last[BTN_TOGGLE]) >= DEBOUNCE_S:
             self._fired[BTN_TOGGLE] = True
+            print(f"BTN fired (stable LOW for {(now - self._last[BTN_TOGGLE])*1000:.1f}ms)", flush=True)
             return True
         return False
 
@@ -163,7 +167,14 @@ class Recorder:
 
     def run(self):
         self._flash_startup()
-        print("Recorder ready. Button: toggle recording.", flush=True)
+        # Re-read after startup to avoid firing on power-on GPIO transients.
+        # If the pin reads LOW here, mark as already fired so it won't trigger
+        # until the button is released and pressed again intentionally.
+        initial = lgpio.gpio_read(self.h, BTN_TOGGLE)
+        self._prev[BTN_TOGGLE]  = initial
+        self._last[BTN_TOGGLE]  = time.monotonic()
+        self._fired[BTN_TOGGLE] = (initial == 0)
+        print(f"Recorder ready. Button: toggle recording. (initial GPIO={initial}, fired={self._fired[BTN_TOGGLE]})", flush=True)
         next_heartbeat = time.monotonic() + HEARTBEAT_S
         try:
             while True:
