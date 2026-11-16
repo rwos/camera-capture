@@ -45,6 +45,11 @@ HEARTBEAT_BLINK_S = 0.04   # each pulse in the idle double-blink
 HEARTBEAT_GAP_S   = 0.08   # gap between the two pulses
 STARTUP_BLINKS    = 3      # number of blinks on startup
 
+# LED patterns: (on, seconds) steps, repeated
+RECORDING_PATTERN = [(True, BLINK_ON_S), (False, BLINK_OFF_S)]
+IDLE_PATTERN      = [(False, HEARTBEAT_S), (True, HEARTBEAT_BLINK_S),
+                     (False, HEARTBEAT_GAP_S), (True, HEARTBEAT_BLINK_S)]
+
 
 def gst_record_cmd(path):
     return (
@@ -93,18 +98,18 @@ class Recorder:
     def _led(self, on):
         lgpio.gpio_write(self.h, LED_GPIO, 1 if on else 0)
 
-    def _blink_loop(self):
+    def _blink_loop(self, pattern):
         while not self._blink_stop.is_set():
-            self._led(True)
-            if self._blink_stop.wait(BLINK_ON_S):
-                break
-            self._led(False)
-            self._blink_stop.wait(BLINK_OFF_S)
+            for on, seconds in pattern:
+                self._led(on)
+                if self._blink_stop.wait(seconds):
+                    break
         self._led(False)
 
-    def _start_blink(self):
+    def _start_blink(self, pattern):
+        self._stop_blink()
         self._blink_stop.clear()
-        self._blink_thread = threading.Thread(target=self._blink_loop, daemon=True)
+        self._blink_thread = threading.Thread(target=self._blink_loop, args=(pattern,), daemon=True)
         self._blink_thread.start()
 
     def _stop_blink(self):
@@ -130,11 +135,11 @@ class Recorder:
         self.rec_path = RECORDINGS_DIR / f"video_{self._timestamp()}.avi"
         self.proc = subprocess.Popen(
             gst_record_cmd(self.rec_path), shell=True, start_new_session=True)
-        self._start_blink()
+        self._start_blink(RECORDING_PATTERN)
         print(f"Recording started: {self.rec_path}", flush=True)
 
     def _stop_recording(self):
-        self._stop_blink()
+        self._start_blink(IDLE_PATTERN)
         if self.proc:
             os.killpg(self.proc.pid, signal.SIGINT)  # SIGINT triggers -e EOS flush
             self.proc.wait()
@@ -175,7 +180,7 @@ class Recorder:
     def _check_recording_alive(self):
         if self.proc and self.proc.poll() is not None:
             print("Recording process exited unexpectedly -- resetting", flush=True)
-            self._stop_blink()
+            self._start_blink(IDLE_PATTERN)
             self.proc = None
             self.rec_path = None
 
@@ -189,7 +194,7 @@ class Recorder:
         self._last[BTN_TOGGLE]  = time.monotonic()
         self._fired[BTN_TOGGLE] = (initial == 0)
         print(f"Recorder ready. Button: toggle recording. (initial GPIO={initial}, fired={self._fired[BTN_TOGGLE]})", flush=True)
-        next_heartbeat = time.monotonic() + HEARTBEAT_S
+        self._start_blink(IDLE_PATTERN)
         try:
             while True:
                 now = time.monotonic()
@@ -202,12 +207,6 @@ class Recorder:
 
                 self._check_recording_alive()
 
-                if self.proc is None and now >= next_heartbeat:
-                    self._led(True);  time.sleep(HEARTBEAT_BLINK_S); self._led(False)
-                    time.sleep(HEARTBEAT_GAP_S)
-                    self._led(True);  time.sleep(HEARTBEAT_BLINK_S); self._led(False)
-                    next_heartbeat = now + HEARTBEAT_S
-
                 time.sleep(POLL_S)
 
         except KeyboardInterrupt:
@@ -215,7 +214,7 @@ class Recorder:
         finally:
             if self.proc is not None:
                 self._stop_recording()
-            self._led(False)
+            self._stop_blink()
             self._edge_cb.cancel()
             lgpio.gpiochip_close(self.h)
 
