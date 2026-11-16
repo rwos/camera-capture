@@ -36,7 +36,7 @@ VIDEO_DEV      = "/dev/video0"
 GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576"  # PAL; NTSC: height=507
 GST_FRAMERATE  = "50/1"    # PAL + I2P; NTSC + I2P: 60000/1001
 
-DEBOUNCE_S        = 0.10   # 100 ms button debounce
+DEBOUNCE_S        = 0.20   # 200 ms button debounce
 POLL_S            = 0.02   # 20 ms polling interval
 BLINK_ON_S        = 0.5    # LED on duration while recording
 BLINK_OFF_S       = 0.5    # LED off duration while recording
@@ -69,8 +69,13 @@ class Recorder:
         RECORDINGS_DIR.mkdir(exist_ok=True)
 
         self.h = lgpio.gpiochip_open(0)
-        lgpio.gpio_claim_input(self.h, BTN_TOGGLE, lgpio.SET_PULL_UP)
+        lgpio.gpio_claim_alert(self.h, BTN_TOGGLE, lgpio.BOTH_EDGES, lgpio.SET_PULL_UP)
         lgpio.gpio_claim_output(self.h, LED_GPIO, 0)
+
+        self._last_edge    = time.monotonic()
+        self._edges        = 0
+        self._edges_logged = 0
+        self._edge_cb = lgpio.callback(self.h, BTN_TOGGLE, lgpio.BOTH_EDGES, self._on_edge)
 
         self.proc     = None    # active recording subprocess
         self.rec_path = None
@@ -140,8 +145,14 @@ class Recorder:
     # ------------------------------------------------------------------
     # Main loop
 
+    def _on_edge(self, chip, gpio, level, timestamp):
+        self._last_edge = time.monotonic()
+        self._edges += 1
+
     def _check_button(self, now):
         val = lgpio.gpio_read(self.h, BTN_TOGGLE)
+        edges = self._edges
+        new_edges, self._edges_logged = edges - self._edges_logged, edges
         if val != self._prev[BTN_TOGGLE]:
             direction = "LOW" if val == 0 else "HIGH"
             held_ms = (now - self._last[BTN_TOGGLE]) * 1000
@@ -151,10 +162,13 @@ class Recorder:
             if val == 1:
                 self._fired[BTN_TOGGLE] = False  # reset on release
             return False
-        # fire once when button has been stably LOW for the debounce period
-        if val == 0 and not self._fired[BTN_TOGGLE] and (now - self._last[BTN_TOGGLE]) >= DEBOUNCE_S:
+        if new_edges:
+            print(f"BTN {new_edges} edges, still {'LOW' if val == 0 else 'HIGH'}", flush=True)
+        # fire once when button has been LOW without any edge for the debounce period
+        stable_s = now - max(self._last[BTN_TOGGLE], self._last_edge)
+        if val == 0 and not self._fired[BTN_TOGGLE] and stable_s >= DEBOUNCE_S:
             self._fired[BTN_TOGGLE] = True
-            print(f"BTN fired (stable LOW for {(now - self._last[BTN_TOGGLE])*1000:.1f}ms)", flush=True)
+            print(f"BTN fired (stable LOW for {stable_s*1000:.1f}ms)", flush=True)
             return True
         return False
 
@@ -202,6 +216,7 @@ class Recorder:
             if self.proc is not None:
                 self._stop_recording()
             self._led(False)
+            self._edge_cb.cancel()
             lgpio.gpiochip_close(self.h)
 
 

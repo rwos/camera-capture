@@ -101,8 +101,8 @@ make optimize
 ### Appliance mode (normal use)
 
 The Pi runs `recorder.service` on every boot. The LED does 3 quick blinks when
-the recorder is ready, then a double-blink every 2.5 seconds while idle. Press
-the button to start or stop recording.
+the recorder is ready, then a double-blink every 5 seconds while idle. Hold
+the button for 0.2 seconds to start or stop recording.
 
 Recordings are saved to `/home/pi/recordings/` as `video_YYYYMMDD_HHMMSS.avi`.
 
@@ -118,8 +118,10 @@ make recordings
 
 | Physical pin | GPIO | Connection |
 |---|---|---|
-| 38 | GPIO 20 | Button: one leg to pin 38, other leg to GND |
-| 40 | GPIO 21 | LED anode (+) → 150Ω → GPIO 21; cathode (−) → GND |
+| 18 | GPIO 24 | Button: one leg to pin 18, other leg to GND |
+| 17 | 3.3 V | 1 kΩ resistor from pin 17 to pin 18 |
+| 20 | GND | 100 nF capacitor from pin 20 to pin 18 |
+| 36 | GPIO 16 | LED anode (+) → 150Ω → GPIO 16; cathode (−) → GND |
 
 GPIO assignments can be changed via `BTN_TOGGLE` and `LED_GPIO` at the top of `recorder.py`.
 
