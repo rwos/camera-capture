@@ -36,7 +36,7 @@ VIDEO_DEV      = "/dev/video0"
 GST_CAPS       = "video/x-raw,format=UYVY,width=720,height=576"  # PAL; NTSC: height=507
 GST_FRAMERATE  = "50/1"    # PAL + I2P; NTSC + I2P: 60000/1001
 
-DEBOUNCE_S        = 0.20   # 200 ms button debounce
+DEBOUNCE_S        = 1.0    # 1 s button debounce
 POLL_S            = 0.02   # 20 ms polling interval
 BLINK_ON_S        = 0.5    # LED on duration while recording
 BLINK_OFF_S       = 0.5    # LED off duration while recording

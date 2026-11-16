@@ -102,7 +102,7 @@ make optimize
 
 The Pi runs `recorder.service` on every boot. The LED does 3 quick blinks when
 the recorder is ready, then a double-blink every 5 seconds while idle. Hold
-the button for 0.2 seconds to start or stop recording.
+the button for 1 second to start or stop recording.
 
 Recordings are saved to `/home/pi/recordings/` as `video_YYYYMMDD_HHMMSS.avi`.
 
