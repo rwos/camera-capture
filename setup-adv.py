@@ -216,9 +216,9 @@ def read_state(i2c):
     #   bit 0 = FSC_LOCK (color subcarrier lock -- secondary, may lag by seconds)
     # The kernel uses ADV7180_STATUS1_IN_LOCK = 0x01 (bit 0 = FSC_LOCK on ADV7280),
     # which causes V4L2 to report "no signal" even when sync is locked.
-    in_lock  = bool(s1 & 0x02)   # bit 1: sync lock
-    fsc_lock = bool(s1 & 0x01)   # bit 0: color subcarrier lock
-    col_kill = bool(s1 & 0x08)   # bit 3: color killer active (no color burst detected)
+    in_lock  = bool(s1 & 0x01)   # bit 0: sync lock
+    fsc_lock = bool(s1 & 0x04)   # bit 2: color subcarrier lock
+    col_kill = bool(s1 & 0x80)   # bit 7: color killer active (no color burst detected)
 
     autod   = s1 & 0x70           # bits[6:4]: autodetected standard
     hz50    = bool(s3 & 0x04)     # STATUS3 bit 2: 50Hz (PAL) vs 60Hz (NTSC)
@@ -246,6 +246,10 @@ def read_state(i2c):
 
 
 # ---- Settings --------------------------------------------------------------
+
+def free_run_active(i2c):
+    "STATUS3 bit 4: no input signal, chip outputs the blue default color. Only updated while streaming."
+    return bool(i2c.read(MAIN, 0x13) & 0x10)
 
 def configure_standard(i2c, standard):
     """

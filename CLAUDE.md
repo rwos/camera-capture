@@ -63,7 +63,10 @@ by `setup-pi.sh` / `make setup`.
 2. `recorder.py` -- Appliance-mode daemon (run by `recorder.service`). Polls one GPIO button
    (GPIO24, physical pin 18, 1 kΩ to pin 17, 100 nF to pin 20): toggles recording. Blinks an
    external LED (GPIO16, physical pin 36, active-high, 150Ω) while recording; double-blinks
-   while idle.
+   while idle. While recording, reads ADV7280 STATUS3 (0x13) bit 4 FREE_RUN_ACT once per
+   second and blinks fast while there is no input signal (the chip outputs blue). The chip is
+   powered down by the kernel driver while no stream is open, so the status registers do not
+   update while idle. Imports `setup-adv.py` for I2C access.
 
 3. `setup-pi.sh` -- One-time Pi setup. Installs `gstreamer1.0-tools`, creates and enables
    a systemd service for persistent CPU performance mode, then runs `setup-adv.py`.

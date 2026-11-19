@@ -102,7 +102,10 @@ make optimize
 
 The Pi runs `recorder.service` on every boot. The LED does 3 quick blinks when
 the recorder is ready, then a double-blink every 5 seconds while idle. Hold
-the button for 1 second to start or stop recording.
+the button for 1 second to start or stop recording. While recording, the LED
+blinks once per second, or fast (5 times per second) while there is no input
+signal. Recording continues without a signal. The signal is only checked while
+recording, because the kernel driver powers the ADV7280 down while idle.
 
 Recordings are saved to `/home/pi/recordings/` as `video_YYYYMMDD_HHMMSS.avi`.
 

@@ -3,7 +3,8 @@
 Appliance-mode recorder for ADV7280 uHat Shield analog video capture.
 
 Button (GPIO 24, physical pin 18): toggle recording (start if idle, stop if recording)
-External LED (GPIO 16, physical pin 36): blinks while recording; double-blinks while idle
+External LED (GPIO 16, physical pin 36): blinks while recording; blinks fast while recording
+without input signal; double-blinks while idle
 
 Recordings saved to /home/pi/recordings/:
   video_YYYYMMDD_HHMMSS.avi
@@ -13,6 +14,7 @@ Usage:
   recorder.py --stream  -- stream MJPEG to stdout; pipe to ffplay on the Mac
 """
 
+import importlib.util
 import lgpio
 import os
 import signal
@@ -44,11 +46,25 @@ HEARTBEAT_S       = 5.0    # pause between idle double-blinks
 HEARTBEAT_BLINK_S = 0.04   # each pulse in the idle double-blink
 HEARTBEAT_GAP_S   = 0.08   # gap between the two pulses
 STARTUP_BLINKS    = 3      # number of blinks on startup
+NO_SIGNAL_BLINK_S = 0.1    # LED on and off duration while recording without input signal
+SIGNAL_CHECK_S     = 1.0   # interval between input signal checks while recording
+SIGNAL_CHECK_COUNT = 2     # equal checks in a row before the LED pattern changes
 
 # LED patterns: (on, seconds) steps, repeated
 RECORDING_PATTERN = [(True, BLINK_ON_S), (False, BLINK_OFF_S)]
+NO_SIGNAL_PATTERN = [(True, NO_SIGNAL_BLINK_S), (False, NO_SIGNAL_BLINK_S)]
 IDLE_PATTERN      = [(False, HEARTBEAT_S), (True, HEARTBEAT_BLINK_S),
                      (False, HEARTBEAT_GAP_S), (True, HEARTBEAT_BLINK_S)]
+
+
+def load_setup_adv():
+    spec = importlib.util.spec_from_file_location("setup_adv", Path(__file__).with_name("setup-adv.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+adv = load_setup_adv()
 
 
 def gst_record_cmd(path):
@@ -84,6 +100,11 @@ class Recorder:
 
         self.proc     = None    # active recording subprocess
         self.rec_path = None
+
+        self.i2c                = adv.I2C(adv.I2C_BUS)
+        self._no_signal         = False
+        self._signal_changes    = 0
+        self._next_signal_check = 0.0
 
         self._blink_stop = threading.Event()
         self._blink_thread = None
@@ -135,6 +156,9 @@ class Recorder:
         self.rec_path = RECORDINGS_DIR / f"video_{self._timestamp()}.avi"
         self.proc = subprocess.Popen(
             gst_record_cmd(self.rec_path), shell=True, start_new_session=True)
+        self._no_signal         = False
+        self._signal_changes    = 0
+        self._next_signal_check = time.monotonic() + SIGNAL_CHECK_S
         self._start_blink(RECORDING_PATTERN)
         print(f"Recording started: {self.rec_path}", flush=True)
 
@@ -184,6 +208,26 @@ class Recorder:
             self.proc = None
             self.rec_path = None
 
+    def _check_signal(self, now):
+        if self.proc is None or now < self._next_signal_check:
+            return
+        self._next_signal_check = now + SIGNAL_CHECK_S
+        try:
+            no_signal = adv.free_run_active(self.i2c)
+        except OSError as e:
+            print(f"Signal check failed: {e}", flush=True)
+            return
+        if no_signal == self._no_signal:
+            self._signal_changes = 0
+            return
+        self._signal_changes += 1
+        if self._signal_changes < SIGNAL_CHECK_COUNT:
+            return
+        self._no_signal = no_signal
+        self._signal_changes = 0
+        print(f"Input signal {'lost' if no_signal else 'back'}", flush=True)
+        self._start_blink(NO_SIGNAL_PATTERN if no_signal else RECORDING_PATTERN)
+
     def run(self):
         self._flash_startup()
         # Re-read after startup to avoid firing on power-on GPIO transients.
@@ -206,6 +250,7 @@ class Recorder:
                         self._stop_recording()
 
                 self._check_recording_alive()
+                self._check_signal(now)
 
                 time.sleep(POLL_S)
 
@@ -217,6 +262,7 @@ class Recorder:
             self._stop_blink()
             self._edge_cb.cancel()
             lgpio.gpiochip_close(self.h)
+            self.i2c.close()
 
 
 if __name__ == "__main__":
